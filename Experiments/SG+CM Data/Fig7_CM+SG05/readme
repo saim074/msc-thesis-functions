@@ -1,0 +1,23 @@
+---New data from S.Lee Nov 20, 03 of HNBR50----
+_________________________________________________
+
+**hnbrd046.dat   --> Comlex cyclic experiments at 300%/min of virgin material
+**viscoel001.dat --> Predamaged(10 cycles) viscoelasticity at 5%/min (real 1.07d-3 [1/s])
+**viscoel002.dat --> Predamaged(10 cycles) viscoelasticity at 500%/min
+**viscoel003.dat --> Predamaged(10 cycles) viscoelasticity at 50%/min
+**visco1.dat --> Predamaged(10 cycles) viscoelasticity at 5%/min (real 1.07d-3 [1/s]) (zero row added)
+**visco2.dat --> Predamaged(10 cycles) viscoelasticity at 500%/min (zero row added)
+**visco3.dat --> Predamaged(10 cycles) viscoelasticity at 50%/min (zero row added)
+
+
+**visco1_1.dat -->  viscoelasticity at 1.070d-3 [1/s] (smoothed version of 1-cycle viscoel001.dat)
+**visco2_1.dat -->  viscoelasticity at 8.333d-2 [1/s] (smoothed version of 1-cycle viscoel002.dat)
+**visco3_1.dat -->  viscoelasticity at 0.860d-2 [1/s] (smoothed version of 1-cycle viscoel003.dat)
+
+**visco1_2.dat -->  viscoelasticity at 1.070d-3 [1/s] (smoothed version of 2-cycle viscoel001.dat)
+**visco2_2.dat -->  viscoelasticity at 8.333d-2 [1/s] (smoothed version of 2-cycle viscoel002.dat)
+**visco3_2.dat -->  viscoelasticity at 0.860d-2 [1/s] (smoothed version of 2-cycle viscoel003.dat)
+
+**visco1_10.dat -->  viscoelasticity at 1.070d-3 [1/s] (smoothed version of 10-cycle viscoel001.dat)
+**visco2_10.dat -->  viscoelasticity at 8.333d-2 [1/s] (smoothed version of 10-cycle viscoel002.dat)
+**visco3_10.dat -->  viscoelasticity at 0.860d-2 [1/s] (smoothed version of 10-cycle viscoel003.dat)

@@ -1,0 +1,25 @@
+
+---New data from S.Lee & J.Mendez Jan 22, 04 of HNBR50----
+_______________________________________________________________________
+(all are pure-compression-predamaged tests  deformaiton 0--> -30%)
+
+**purecomp001.dat --> Predamaged(10 cycles) viscoelasticity at 5%/min
+**purecomp003.dat --> Predamaged(10 cycles) viscoelasticity at 50%/min
+**purecomp004.dat --> Predamaged(10 cycles) viscoelasticity at 500%/min
+**purecomp1.dat --> Predamaged(10 cycles) viscoelasticity at 5%/min (zero row added)
+**purecomp3.dat --> Predamaged(10 cycles) viscoelasticity at 50%/min (zero row added)
+**purecomp4.dat --> Predamaged(10 cycles) viscoelasticity at 500%/min (zero row added)
+
+
+**purecom1_1.dat --> viscoelasticity at 9.4548d-4 [1/s] (smoothed version of 1-cycle purecomp1.dat)
+**purecom3_1.dat --> viscoelasticity at 8.5025e-3 [1/s] (smoothed version of 1-cycle purecomp3.dat)
+**purecom4_1.dat --> viscoelasticity at 7.0462d-2 [1/s] (smoothed version of 1-cycle purecomp4.dat)
+
+**purecom1_2.dat --> viscoelasticity at 9.4548d-4 [1/s] (smoothed version of 2-cycle purecomp1.dat)
+**purecom3_2.dat --> viscoelasticity at 8.5025e-3 [1/s] (smoothed version of 2-cycle purecomp3.dat)
+**purecom4_2.dat --> viscoelasticity at 7.0462d-2 [1/s] (smoothed version of 2-cycle purecomp4.dat)
+
+**purecom1_10.dat --> viscoelasticity at 9.4548d-4 [1/s] (smoothed version of 10-cycle purecomp1.dat)
+**purecom3_10.dat --> viscoelasticity at 8.5025e-3 [1/s] (smoothed version of 10-cycle purecomp3.dat)
+**purecom4_10.dat --> viscoelasticity at 7.0462d-2 [1/s] (smoothed version of 10-cycle purecomp4.dat)
+

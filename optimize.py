@@ -16,6 +16,7 @@ def evaluate(mdata, params, mat):
     """
 
     # Does the result fit the stress-strain curve well?
+    pred = []
     for t, strain, stress in mdata:
 
         # Initialize empty list for history variables
@@ -29,30 +30,44 @@ def evaluate(mdata, params, mat):
             stress_new, histvars = stress_update(t[:n+1], strain[:n+1],
                                                  histvars, params, mat)
             stress_hat.append(stress_new)
+        
+        pred.append((t, strain, stress_hat))
 
+        # P11 and Stretch
         plt.figure(figsize=(10, 4))
 
         plt.subplot(1, 2, 1)
-        # plt.plot(t, stress_hat, label = "Predicted")
-        # plt.scatter(t, stress, label = "True", s=15, c="orange")
-        # plt.xlabel("Time")
-        # plt.ylabel("Stress")
         plt.plot(t, stress_hat/np.exp(strain), label = "Predicted")
         plt.scatter(t, stress/np.exp(strain), label = "True", s=15, c="orange")
         plt.xlabel("Time")
-        plt.xlabel("P11")
+        plt.ylabel("P11")
+        plt.legend()
+
+        plt.subplot(1, 2, 2)
+        plt.plot(np.exp(strain), stress_hat/np.exp(strain), label = "Predicted")
+        plt.scatter(np.exp(strain), stress/np.exp(strain), label = "True", s=15, c="orange")
+        plt.xlabel("Stretch")
+        plt.ylabel("P11")
+        plt.legend()
+
+        # True strain and true stress
+        plt.figure(figsize=(10, 4))
+
+        plt.subplot(1, 2, 1)
+        plt.plot(t, stress_hat, label = "Predicted")
+        plt.scatter(t, stress, label = "True", s=15, c="orange")
+        plt.xlabel("Time")
+        plt.ylabel("True Stress")
         plt.legend()
 
         plt.subplot(1, 2, 2)
         plt.plot(strain, stress_hat, label = "Predicted")
         plt.scatter(strain, stress, label = "True", s=15, c="orange")
-        # plt.plot(np.exp(strain), stress_hat/np.exp(strain), label = "Predicted")
-        # plt.scatter(np.exp(strain), stress/np.exp(strain), label = "True", s=15, c="orange")
-        plt.xlabel("Strain")
-        plt.ylabel("Stress")
+        plt.xlabel("True Strain")
+        plt.ylabel("True Stress")
         plt.legend()
 
-    return
+    return pred
 
 def optimize(mdata, params_init, params_names, mat, max_iter=5000, print_after=100, plot_after = 100, tol=10e-6,
              alpha=1e-3, b1=0.9, b2=0.999, e=1e-8, lambda_1 = 0,
