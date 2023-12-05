@@ -3,6 +3,76 @@ import numpy as np
 from numpy import tensordot as td
 import numpy.linalg as la
 
+def stress_update(t, strain, histvars, params, mat):
+
+    """
+    Update stress and history variables
+    Inputs
+        t       : list of timestamps upto the current timestep
+        strain  : list of strain values upto the current timestep
+        histvars: list of list of history variables upto the previous timestep
+        params  : list of material parameters
+        mat     : string identifying which material model to use
+    Output
+        stress_new: updated stress
+        histvars  : updated list of list of history variables upto the
+                    current timestep
+    """
+    # Uniaxial bergstrom boyce
+    if mat == "ubb":
+        stress_new, histvars = \
+        ubb_su(t, strain, histvars, params)
+    # Uniaxial bergstrom boyce (incompressible)
+    elif mat == "ubbi":
+        stress_new, histvars = \
+        ubbi_su(t, strain, histvars, params)
+    # Uniaxial bergstrom boyce modified
+    elif mat == "ubbm":
+        stress_new, histvars = \
+        ubbm_su(t, strain, histvars, params)
+    # Uniaxial bergstrom boyce modified (incompressible)
+    elif mat == "ubbmi":
+        stress_new, histvars = \
+        ubbmi_su(t, strain, histvars, params)
+
+    return stress_new, histvars
+
+def derivative_update(t, strain, histvars, stress_new, drecurr, params, mat):
+    """
+    Update stress and recurrent derivatives
+    Inputs
+        t         : list of timestamps upto the current timestep
+        strain    : list of strain values upto the current timestep
+        histvars  : list of list of history variables upto the current timestep
+        stress_new: updated stress at current timestep
+        drecurr   : list of list of recurrent derivatives upto the previous timestep
+        params    : list of material parameters
+        mat       : string identifying which material model to use
+    Output
+        dstress: list of derivatives of updated streess wrt each material parameter
+        drecurr: updated list of list of recurrent derivatives upto the
+                 current timestep
+    """
+
+    # Uniaxial bergstrom boyce
+    if mat == "ubb":
+        dstress, drecurr = \
+        ubb_du(t, strain, histvars, stress_new, drecurr, params)
+    # Uniaxial bergstrom boyce (incompressible)
+    elif mat == "ubbi":
+        dstress, drecurr = \
+        ubbi_du(t, strain, histvars, stress_new, drecurr, params)
+    # Uniaxial bergstrom boyce modified
+    elif mat == "ubbm":
+        dstress, drecurr = \
+        ubbm_du(t, strain, histvars, stress_new, drecurr, params)
+    # Uniaxial bergstrom boyce modified (incompressible)
+    elif mat == "ubbmi":
+        dstress, drecurr = \
+        ubbmi_du(t, strain, histvars, stress_new, drecurr, params)
+
+    return dstress, drecurr
+
 
 #region ##-- UNIAXIAL BERGSTROM BOYCE --##
 
