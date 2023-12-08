@@ -7,6 +7,7 @@ ubbi: Uniaxial Bergstrom Boyce (Incompressible)
 
 TO-DO:
     - Make animations
+    - Fit Fig7d to simple bergstrom boyce
 
 ##--EXPERIMENT 1--##
 
