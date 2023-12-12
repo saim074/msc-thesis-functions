@@ -1,9 +1,11 @@
 ubbi: Uniaxial Bergstrom Boyce (Incompressible)
+ubbmi: Uniaxial Bergstrom Boyce Modified (Incompressible)
 
 - Experiment 1: Data from dal+kaliske paper fitted on same model
 - Experiment 2: Data from goktepe+miehe05 paper Fig7b (slowest rate) fitted on modified bergstrom boyce
 - Experiment 3: Data from goktepe+miehe05 paper Fig7c and 7d (intermediate and fastest) fitted on modified bergstrom boyce
 - Experiment 4: Fig7d (Highest rate, largest hysteresis) fitted to increasing number of power terms
+- Experiment 5: Fig7b and 7d (Slowest and fastest) fitted to ubbmi (terms = 2) and then tested on other experiments
 
 TO-DO:
     - Make animations
@@ -58,3 +60,18 @@ TO-DO:
 
     Comments:
         The increase in the power terms did not help much with the plot
+
+##--EXPERIMENT 5--##
+
+    Data:
+        Experimental data from paper
+        Fig 7b (visco1_2) rate = 0.05/min and d(visco2_2) rate=5/min
+        Data made sparser by taking every fifth point
+
+    Fitting:
+        We will fit to both datasets at the same time
+        No parameters fixed, 2 aj terms
+        Evaluated on the same data, plot in results for P11 vs stretch and true strain vs true stress
+
+    Comments:
+        The learned params will be use to evaluate fit on all the other datasets from the paper
