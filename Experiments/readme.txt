@@ -75,3 +75,13 @@ TO-DO:
 
     Comments:
         The learned params will be use to evaluate fit on all the other datasets from the paper
+
+##--EXPERIMENT 6--##
+
+    Plan:
+        Idea is to fit parameters of elasticity first to Fig 6 from miehe+goktepe05
+        Then to fit the parameters to Fig 7b and d and see if hysteresis actually happens for slower rates as well
+    
+    Data:
+        We actually use first 6 data points to fit elasticity to only fit behaviour upto
+        stretch = 2

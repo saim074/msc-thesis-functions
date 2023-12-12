@@ -71,7 +71,7 @@ def evaluate(mdata, params, mat):
 
 def optimize(mdata, params_init, params_names, mat, max_iter=5000, print_after=100, plot_after = 100, tol=10e-6,
              alpha=1e-3, b1=0.9, b2=0.999, e=1e-8, lambda_1 = 0,
-             fix_param = False, get_lowest=True):
+             non_neg = False, fix_param = False, get_lowest=True):
 
     """
     Finds the optimum value for the parameters using gradient descent
@@ -90,6 +90,7 @@ def optimize(mdata, params_init, params_names, mat, max_iter=5000, print_after=1
         b2          : decay constant 2 (Adam)
         e           : small positive constant to avoid division by zero (Adam)
         lambda_1    : a single or a list of values of L1 regularization for each parameter
+        non_neg     : a single or a list of booleans to make params zero (1e-8) if non-negative
         fix_param   : a single or a list of booleans to fix parameters
         get_lowest  : if True, get the parameters that correspond to the lowest loss value
     Outputs
@@ -129,6 +130,13 @@ def optimize(mdata, params_init, params_names, mat, max_iter=5000, print_after=1
             else:
                 fix_param_j = fix_param
 
+            # Non-neg param
+            if type(non_neg) == list:
+                non_neg_j = non_neg[j]
+            else:
+                non_neg_j = non_neg
+
+            # L1 param
             if type(lambda_1) == list:
                 lambda_1_j = lambda_1[j]
             else:
@@ -145,6 +153,11 @@ def optimize(mdata, params_init, params_names, mat, max_iter=5000, print_after=1
                 v_hat = v[j]/(1-b2**(i+1))
                 # params_new[j] = params_curr[j] - alpha*(m_hat/(np.sqrt(v_hat)+e))
                 params_new[j] = params_curr[j] - alpha*((m_hat/(np.sqrt(v_hat)+e)) + lambda_1_j*np.sign(params_curr[j]))
+            
+            # Non negativity
+            if non_neg_j:
+                if params_new[j] < 0:
+                    params_new[j] = 1e-8
 
         # Append to histories
         params_hist.append(params_new)
