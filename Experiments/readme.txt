@@ -1,11 +1,13 @@
 ubbi: Uniaxial Bergstrom Boyce (Incompressible)
 ubbmi: Uniaxial Bergstrom Boyce Modified (Incompressible)
 
+- Reports     : Not used anymore
 - Experiment 1: Data from dal+kaliske paper fitted on same model
 - Experiment 2: Data from goktepe+miehe05 paper Fig7b (slowest rate) fitted on modified bergstrom boyce
 - Experiment 3: Data from goktepe+miehe05 paper Fig7c and 7d (intermediate and fastest) fitted on modified bergstrom boyce
 - Experiment 4: Fig7d (Highest rate, largest hysteresis) fitted to increasing number of power terms
 - Experiment 5: Fig7b and 7d (Slowest and fastest) fitted to ubbmi (terms = 2) and then tested on other experiments
+- Experiment 6: Fit elastic parameters first and then fit Fig 7b and 7d
 
 TO-DO:
     - Make animations
