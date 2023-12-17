@@ -2245,3 +2245,472 @@ def ubbmi_du(t, strain, histvars, stress_new, drecurr, params):
 
 #endregion
 
+#region ##--UNIAXIAL BERGSTROM BOYCE MODIFIED 2 BRANCHES (INCOMPRESSIBLE)--##
+
+def ubbmi2_su(t, strain, histvars, params):
+    """
+    Update stress and history variables using homogenous uniaxial bergstrom boyce model with two branches
+    Inputs
+        t       : list of timestamps upto the current timestep
+        strain  : list of strain values upto the current timestep
+        histvars: list of list of history variables upto the previous timestep
+        params: list of material parameters
+    Output
+        stress_new: updated stress
+        histvars  : updated list of list of history variables upto the
+                    current timestep
+    """
+
+    # Maximum iterations
+    count_max = 100
+
+    # Material parameters
+    mu = params[0]
+    mu_v = [params[1], params[2]]
+    N = params[3]
+    mu_v = [params[4], params[5]]
+    tau_hat = [params[6], params[7]]
+    aj = params[8:]
+    aj = [params[:len(aj)/2], params[len(aj)/2:]]
+
+    # Initialize history variables if needed
+    if len(histvars) == 0:
+        b11_init = 1
+        histvars.append([b11_init])
+
+    # History variables from previous timestep
+    b11_prev = histvars[-1][0]
+
+    #Fourth order identity tensor, I kron I, Projection Tensor
+    I = np.eye(3)
+    IxI = td(I, I, 0)
+    II = I.reshape(3, 1, 3, 1)*I.reshape(1, 3, 1, 3)
+    PP = II - (1/3)*IxI
+
+    # Current deformation gradient
+    F = np.eye(3)
+    lambda1 = np.exp(strain[-1])
+    F[0, 0] = lambda1
+    F[1, 1] = 1/np.sqrt(lambda1)
+    F[2, 2] = 1/np.sqrt(lambda1)
+    dt = t[-1]-t[-2]
+
+    # # Residual and count initialisation
+    # res = np.ones([2, 1])
+    # count = 0
+
+    # # Newton update loop for unknown stretches
+    # while (abs(res) > 1.e-4).any() and (count < count_max):
+
+    # Necessary values
+    J = F[0, 0]*F[1, 1]*F[2, 2] #det
+    Fbar = J**(-1/3)*F
+    Cbar = Fbar.T@Fbar
+    I1 = np.trace(Cbar)
+    lambda_r = np.sqrt(I1/3/N)
+    lang = (3-lambda_r**2)/(1-lambda_r**2)
+    bbar = Fbar@Fbar.T
+    C = F.T@F
+    lambda_a_sq, N_a = la.eig(C) # !!!!!!!!!
+    lambda_a = np.sqrt(lambda_a_sq).reshape(-1, 1)
+
+    ## Unimodular elastic kirchoff stress
+    taubar_e = (mu*lang/3)*bbar
+
+    ## Unimodular viscous kirchoff stress (Newton update)
+    F_prev = np.eye(3)
+    F_prev[0, 0] = np.exp(strain[-2])
+    F_prev[1, 1] = 1/np.sqrt(F_prev[0, 0])
+    F_prev[2, 2] = 1/np.sqrt(F_prev[0, 0])
+    be_prev = np.eye(3)
+    be_prev[0, 0] = b11_prev
+    be_prev[1, 1] = 1/np.sqrt(b11_prev)
+    be_prev[2, 2] = 1/np.sqrt(b11_prev)
+    J_prev = F_prev[0, 0]*F_prev[1, 1]*F_prev[2, 2] #det
+    Fbar_prev = J_prev**(-1/3)*F_prev
+    be_tr = Fbar@la.inv(Fbar_prev)@be_prev@la.inv(Fbar_prev).T@Fbar.T
+    lambda_a_e_tr_sq, n_a = la.eig(be_tr)
+    lambda_a_e_tr = np.sqrt(lambda_a_e_tr_sq).reshape(-1, 1)
+    eps_a_tr = np.log(lambda_a_e_tr)
+
+    # Initial values of the elastic logarithmic stretches
+    eps_a = eps_a_tr
+    res = np.ones(3)
+    count = 0
+
+    # Newton loop for unknown elastic logarithmic stretches
+    while (abs(res) > 1.e-4).any() and (count < count_max):
+
+        # Necessary values
+        be = n_a@np.diag(np.exp(eps_a[:, 0])**2)@la.inv(n_a)
+        I1_e = np.trace(be)
+        lambda_r_e = np.sqrt(I1_e/3/N_v)
+        lang_e = (3-lambda_r_e**2)/(1-lambda_r_e**2)
+
+        # Unimodular viscous kirchoff stress
+        taubar_v = (mu_v*lang_e/3)*be
+        tau_v_iso = td(PP, taubar_v, 2)
+        tau_v = la.norm(tau_v_iso)/np.sqrt(2)
+        devtau_a = la.eig(tau_v_iso)[0].reshape(-1, 1)
+
+        # Effective creep rate
+        gamma_dot = sum([aj[j-1]*(tau_v/tau_hat)**j for j in range(1, len(aj)+1)])
+
+        res = eps_a + dt*gamma_dot*devtau_a/np.sqrt(2)/tau_v - eps_a_tr
+
+        # Local tangent
+        beta1 = (dt/2/np.sqrt(2))*(1/tau_hat**3)*sum([aj[j-1]*(j-1)*(tau_v/tau_hat)**(j-3) for
+                                                        j in range(2, len(aj)+1)])
+        beta2 = dt*gamma_dot/np.sqrt(2)/tau_v
+        T = (2/3)*mu_v*((3-lambda_r_e**2)/(1-lambda_r_e**2))*np.diag((lambda_a**2).reshape(3)) - \
+        (4/9)*(mu_v/N_v)*(1/(1-lambda_r_e**2))*(lambda_a**2)*(lambda_a**2).reshape(3)
+        Tbar = T - (1/3)*np.sum(T, 0)
+        D = (devtau_a.reshape(1, 3)@T).reshape(3, 1)
+        K = I + beta1*devtau_a*D.reshape(3) + beta2*Tbar
+
+        # Update
+        K_inv = la.inv(K)
+        eps_a = eps_a - K_inv@res
+
+        # Update count
+        count += 1
+
+
+    ## Isochoric kirchoff stress and pressure
+    taubar = taubar_e + taubar_v
+    tau_iso = td(PP, taubar, 2)
+    p = -tau_iso[1, 1]
+
+    ## 1.5. Total kirchoff stress
+    tau = p*I + tau_iso
+
+    # Stress and history variables
+    stress_new = tau[0, 0]
+    b11_new = be[0, 0]
+    histvars_new = [b11_new]
+    histvars.append(histvars_new)
+
+    return stress_new, histvars
+
+def ubbmi2_du(t, strain, histvars, stress_new, drecurr, params):
+    """
+    Update derivatives using homogenous uniaxial bergstrom boyce model with two branches
+    Inputs
+        t         : list of timestamps upto the current timestep
+        strain    : list of strain values upto the current timestep
+        histvars  : list of list of history variables upto the current timestep
+        stress_new: updated stress at current timestep
+        drecurr   : list of list of recurrent derivatives upto the previous timestep
+        params    : list of material parameters
+    Output
+        dsig   : list of derivatives of updated streess wrt each material parameter
+        drecurr: updated list of list of recurrent derivatives upto the
+                 current timestep
+    """
+
+    # Material parameters
+    mu = params[0]
+    mu_v = params[1]
+    N = params[2]
+    N_v = params[3]
+    tau_hat = params[4]
+    aj = params[5:]
+
+    # History variables from previous timestep
+    b11_prev = histvars[-2][0]
+
+    # History variables from current timestep
+    b11 = histvars[-1][0]
+
+    # Initialize recurrent_derivatives if needed
+    if len(drecurr) == 0:
+        db11_init = [0 for j in range(len(params))]
+        drecurr.append(db11_init)
+
+    # Recurrent derivatives from previous timestep
+    db11prev = drecurr[-1]
+
+    # Fourth order identity tensor, I kron I, Projection Tensor
+    I = np.eye(3)
+    IxI = td(I, I, 0)
+    II = I.reshape(3, 1, 3, 1)*I.reshape(1, 3, 1, 3)
+    PP = II - (1/3)*IxI
+
+    # Current deformation gradient
+    F = np.eye(3)
+    lambda1 = np.exp(strain[-1])
+    F[0, 0] = lambda1
+    lambda2 = 1/np.sqrt(lambda1)
+    F[1, 1] = lambda2
+    F[2, 2] = lambda2
+    dt = t[-1]-t[-2]
+
+    # Necessary values
+    J = F[0, 0]*F[1, 1]*F[2, 2] #det
+    Fbar = J**(-1/3)*F
+    Cbar = Fbar.T@Fbar
+    I1 = np.trace(Cbar)
+    lambda_r = np.sqrt(I1/3/N)
+    lang = (3-lambda_r**2)/(1-lambda_r**2)
+    bbar = Fbar@Fbar.T
+
+    be = np.array(
+        [[b11, 0, 0],
+         [0, 1/np.sqrt(b11), 0],
+         [0, 0, 1/np.sqrt(b11)]]
+    )
+    I1_e = np.trace(be)
+    lambda_r_e = np.sqrt(I1_e/3/N_v)
+    lange = (3-lambda_r_e**2)/(1-lambda_r_e**2)
+
+    tau_v_iso = td(PP, (mu_v/3)*lange*be, 2)
+    tau_v = la.norm(tau_v_iso)/np.sqrt(2)
+    N11 = tau_v_iso[0, 0]/(tau_v*np.sqrt(2))
+    gammadot = sum([aj[j-1]*(tau_v/tau_hat)**j for j in range(1, len(aj)+1)])
+    expo = np.exp(-2*gammadot*N11*dt)
+    lambda1_prev = np.exp(strain[-2])
+    lambda2_prev = 1/np.sqrt(lambda1_prev)
+
+
+    ### 1. Matrix A
+
+    # ## 1.1. df_lambda2 and dg_lambda2
+    # dtauvol_lambda2 = kappa*(2*lambda1*lambda2)*np.eye(3)
+    # dlang_lambdar = 4*lambda_r/(lambda_r**2 - 1)**2
+    # dlambdar_I1 = 1/(2*np.sqrt(3*N*I1))
+    # dI1_lambda2 = (4/3)*(-lambda1**(4/3)*lambda2**(-7/3) + lambda1**(-2/3)*lambda2**(-1/3))
+    # dbbar_lambda2 = (1/3)*np.array(
+    #     [[-4*lambda1**(4/3)*lambda2**(-7/3), 0, 0],
+    #      [0, 2*lambda1**(-2/3)*lambda2**(-1/3), 0],
+    #      [0, 0, 2*lambda1**(-2/3)*lambda2**(-1/3)]]
+    # )
+    # dlambdar_lambda2 = dlambdar_I1*dI1_lambda2
+    # dtaueiso_lambda2 = td(PP,
+    #                       ((mu/3)*dlang_lambdar*dlambdar_lambda2*bbar + (mu/3)*lang*dbbar_lambda2),
+    #                       2)
+    # df_lambda2 = dtauvol_lambda2[0, 0] + dtaueiso_lambda2[0, 0]
+    # dg_lambda2 = dtauvol_lambda2[1, 1] + dtaueiso_lambda2[1, 1]
+
+    ## 1.1. df_b11 and dg_b11
+    dlange_lambdare = 4*lambda_r_e/(lambda_r_e**2 - 1)**2
+    dlambdare_I1e = 1/(2*np.sqrt(3*N_v*I1_e))
+    dI1e_b11 = 1 - 1/(b11**(3/2))
+    dlambdare_b11 = dlambdare_I1e*dI1e_b11
+    dbe_b11 = np.array(
+        [[1, 0, 0],
+         [0, -1/(2*b11**(3/2)), 0],
+         [0, 0, -1/(2*b11**(3/2))]]
+    )
+    dtauviso_b11 = td(PP,
+                      ((mu_v/3)*dlange_lambdare*dlambdare_b11*be + (mu_v/3)*lange*dbe_b11),
+                      2)
+    df_b11 = dtauviso_b11[0, 0] - dtauviso_b11[1, 1]
+    # dg_b11 = dtauviso_b11[1, 1]
+
+    # ## 1.3. dh_lambda2
+    # betr11 = ((lambda1*lambda2_prev)/(lambda2*lambda1_prev))**(4/3)*b11_prev
+    # dbetr11_lambda2 = \
+    # -(4/(3*lambda2))*((lambda1*lambda2_prev)/(lambda2*lambda1_prev))**(4/3)*b11_prev
+    # dbe11_lambda2 = expo*dbetr11_lambda2
+    # dh_lambda2 = dbe11_lambda2
+
+    ## 1.2. dg_b11
+    dtauv_tauviso = tau_v_iso/(2*tau_v)
+    dtauv_b11 = td(dtauv_tauviso, dtauviso_b11, 2)
+    dgammadot_b11 = (1/tau_hat)*sum([j*aj[j-1]*(tau_v/tau_hat)**(j-1) for j in range(1, len(aj)+1)])*dtauv_b11
+    dexpo_N11 = -2*gammadot*dt*expo
+    dN11_b11 = \
+    (la.norm(tau_v_iso)*dtauviso_b11[0, 0] - (np.sqrt(2)*dtauv_b11)*(tau_v_iso[0, 0]))/(la.norm(tau_v_iso)**2)
+    dexpo_gammadot = -2*N11*dt*expo
+    dexpo_b11 = dexpo_gammadot*dgammadot_b11 + dexpo_N11*dN11_b11
+    betr11 = ((lambda1*lambda2_prev)/(lambda2*lambda1_prev))**(4/3)*b11_prev
+    dbe11_b11 = dexpo_b11*betr11
+    dg_b11 = dbe11_b11
+
+    ## 1.5. Construct the matrix A and A_inv
+    A = np.array(
+        [[1, -df_b11],
+         [0, 1-dg_b11]]
+    )
+    A_inv = la.inv(A)
+
+    ### 2. kappa
+
+    ## 2.1. b_kappa
+    # db11prev_kappa = db11prev[0]
+    # dlambda2prev_kappa = dlambda2prev[0]
+    # dtauvol_kappa = (J-1)*np.eye(3)
+    # dbe11_b11prev = expo*((lambda1*lambda2_prev)/(lambda2*lambda1_prev))**(4/3)
+    # dbe11_lambda2prev = \
+    # expo*(4/(3*lambda2_prev))*((lambda1*lambda2_prev)/(lambda2*lambda1_prev))**(4/3)*b11_prev
+    # df_kappa = dtauvol_kappa[0, 0]
+    # dg_kappa = dtauvol_kappa[1, 1]
+    # dh_kappa = 0
+    # dh_b11prev = dbe11_b11prev
+    # dh_lambda2prev = dbe11_lambda2prev
+    # b_kappa = np.array(
+    #     [[df_kappa],
+    #      [dg_kappa],
+    #      [dh_kappa + dh_b11prev*db11prev_kappa + dh_lambda2prev*dlambda2prev_kappa]]
+    # )
+
+    # ## 2.2. solve for d_kappa
+    # d_kappa = A_inv@b_kappa
+    # dstress_kappa = d_kappa[0, 0]
+    # dlambda2_kappa = d_kappa[1, 0]
+    # db11_kappa = d_kappa[2, 0]
+
+    ### 2. mu
+
+    ## 2.1. b_mu
+    db11prev_mu = db11prev[0]
+    # dlambda2prev_mu = dlambda2prev[1]
+    dtaueiso_mu = td(PP,
+                     (1/3)*lang*bbar,
+                     2)
+    dbe11_b11prev = expo*((lambda1*lambda2_prev)/(lambda2*lambda1_prev))**(4/3)
+    df_mu = dtaueiso_mu[0, 0] - dtaueiso_mu[1, 1]
+    # dg_mu = dtaueiso_mu[1, 1]
+    dg_mu = 0
+    dg_b11prev = dbe11_b11prev
+    b_mu = np.array(
+        [[df_mu],
+         [dg_mu + dg_b11prev*db11prev_mu]]
+    )
+
+    ## 2.2. solve for d_mu
+    d_mu = A_inv@b_mu
+    dstress_mu = d_mu[0, 0]
+    # dlambda2_mu = d_mu[1, 0]
+    db11_mu = d_mu[1, 0]
+
+    ### 3. mu_v
+
+    ## 3.1. b_muv
+    db11prev_muv = db11prev[1]
+    # dlambda2prev_muv = dlambda2prev[2]
+    dtauviso_muv = td(PP,
+                      (1/3)*lange*be,
+                      2)
+    dgammadot_tauviso = (1/tau_hat)*sum([j*aj[j-1]*(tau_v/tau_hat)**(j-1) for
+                                         j in range(1, len(aj)+1)])*dtauv_tauviso
+    dtauviso11_tauviso = np.zeros((3, 3))
+    dtauviso11_tauviso[0, 0] = 1
+    dN11_tauviso = \
+     (la.norm(tau_v_iso)*dtauviso11_tauviso - tau_v_iso[0, 0]*(np.sqrt(2)*dtauv_tauviso))/(la.norm(tau_v_iso)**2)
+    dexpo_tauviso = dexpo_gammadot*dgammadot_tauviso + dexpo_N11*dN11_tauviso
+    dbe11_tauviso = dexpo_tauviso*betr11
+    dbe11_muv = td(dbe11_tauviso, dtauviso_muv, 2)
+    df_muv = dtauviso_muv[0, 0] - dtauviso_muv[1, 1]
+    # dg_muv = dtauviso_muv[1, 1]
+    dg_muv = dbe11_muv
+    b_muv = np.array(
+        [[df_muv],
+         [dg_muv + dg_b11prev*db11prev_muv]]
+    )
+
+    ## 3.2. solve for d_muv
+    d_muv = A_inv@b_muv
+    dstress_muv = d_muv[0, 0]
+    # dlambda2_muv = d_muv[1, 0]
+    db11_muv = d_muv[1, 0]
+
+    ### 4. N
+
+    ## 4.1. b_N
+    db11prev_N = db11prev[2]
+    # dlambda2prev_N = dlambda2prev[3]
+    dlambdar_N = -(1/(2*N))*np.sqrt(I1/(3*N))
+    dlang_lambdar = 4*lambda_r/(lambda_r**2 - 1)**2
+    dtaueiso_N = td(PP, (mu/3)*dlang_lambdar*dlambdar_N*bbar, 2)
+    df_N = dtaueiso_N[0, 0] - dtaueiso_N[1, 1]
+    # dg_N = dtaueiso_N[1, 1]
+    dg_N = 0
+    b_N = np.array(
+        [[df_N],
+         [dg_N + dg_b11prev*db11prev_N]]
+    )
+
+    ## 4.2. solve for d_N
+    d_N = A_inv@b_N
+    dstress_N = d_N[0, 0]
+    # dlambda2_N = d_N[1, 0]
+    db11_N = d_N[1, 0]
+
+    ### 5. N_v
+
+    ## 5.1. b_Nv
+    db11prev_Nv = db11prev[3]
+    # dlambda2prev_Nv = dlambda2prev[4]
+    dlambdare_Nv = -(1/(2*N_v))*np.sqrt(I1_e/(3*N_v))
+    dtauviso_Nv = td(PP, (mu_v/3)*dlange_lambdare*dlambdare_Nv*be)
+    dbe11_Nv = td(dbe11_tauviso, dtauviso_Nv, 2)
+    df_Nv = dtauviso_Nv[0, 0] - dtauviso_Nv[1, 1]
+    # dg_Nv = dtauviso_Nv[1, 1]
+    dg_Nv = dbe11_Nv
+    b_Nv = np.array(
+        [[df_Nv],
+         [dg_Nv + dg_b11prev*db11prev_Nv]]
+    )
+
+    ## 5.2. solve for d_Nv
+    d_Nv = A_inv@b_Nv
+    dstress_Nv = d_Nv[0, 0]
+    # dlambda2_Nv = d_Nv[1, 0]
+    db11_Nv = d_Nv[1, 0]
+
+    ### 6. tau_hat
+
+    ## 6.1. b_tauhat
+    db11prev_tauhat = db11prev[4]
+    # dlambda2prev_tauhat = dlambda2prev[5]
+    dgammadot_tauhat = -(1/tau_hat)*sum([j*aj[j-1]*(tau_v/tau_hat)**j for j in range(1, len(aj)+1)])
+    dbe11_tauhat = dexpo_gammadot*dgammadot_tauhat*betr11
+    df_tauhat = 0
+    dg_tauhat = dbe11_tauhat
+    b_tauhat = np.array(
+        [[df_tauhat],
+         [dg_tauhat + dg_b11prev*db11prev_tauhat]]
+    )
+
+    ## 6.2. solve for d_tauhat
+    d_tauhat = A_inv@b_tauhat
+    dstress_tauhat = d_tauhat[0, 0]
+    # dlambda2_tauhat = d_tauhat[1, 0]
+    db11_tauhat = d_tauhat[1, 0]
+
+    ### 7. aj
+
+    dstress_aj = []
+    db11_aj = []
+    for j in range(1, len(aj)+1):
+
+        ## 7.1. b_aj
+        db11prev_aj = db11prev[4+j]
+        # dlambda2prev_aj = dlambda2prev[5+j]
+        dgammadot_aj = (tau_v/tau_hat)**j
+        dbe11_aj = dexpo_gammadot*dgammadot_aj*betr11
+        df_aj = 0
+        dg_aj = dbe11_aj
+        b_aj = np.array(
+            [[df_aj],
+            [dg_aj + dg_b11prev*db11prev_aj]]
+        )
+
+        ## 7.2. solve for d_aj
+        d_aj = A_inv@b_aj
+        dstress_aj.append(d_aj[0, 0])
+        # dlambda2_aj.append(d_aj[1, 0])
+        db11_aj.append(d_aj[1, 0])
+
+    # Stress and Recurrent derivatives
+    dstress = [dstress_mu, dstress_muv, dstress_N, dstress_Nv,
+               dstress_tauhat] + dstress_aj
+    db11 = [db11_mu, db11_muv, db11_N, db11_Nv,
+            db11_tauhat] + db11_aj
+    drecurr_new = db11
+    drecurr.append(drecurr_new)
+
+    return dstress, drecurr
+
+#endregion
