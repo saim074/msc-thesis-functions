@@ -8,6 +8,7 @@ ubbmi: Uniaxial Bergstrom Boyce Modified (Incompressible)
 - Experiment 4: Fig7d (Highest rate, largest hysteresis) fitted to increasing number of power terms
 - Experiment 5: Fig7b and 7d (Slowest and fastest) fitted to ubbmi (terms = 2) and then tested on other experiments
 - Experiment 6: Fit elastic parameters first and then fit Fig 7b and 7d
+- Experiment 7: Is tau overshooting? Same as experiment 6 but slower learning rate
 
 TO-DO:
     - Make animations
