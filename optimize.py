@@ -17,6 +17,7 @@ def evaluate(mdata, params, mat):
 
     # Does the result fit the stress-strain curve well?
     pred = []
+    L = 0
     for t, strain, stress in mdata:
 
         # Initialize empty list for history variables
@@ -30,6 +31,9 @@ def evaluate(mdata, params, mat):
             stress_new, histvars = stress_update(t[:n+1], strain[:n+1],
                                                  histvars, params, mat)
             stress_hat.append(stress_new)
+
+            #Add to the loss term
+            L += (stress_new - stress[n])**2
         
         pred.append((t, strain, stress_hat))
 
@@ -67,7 +71,7 @@ def evaluate(mdata, params, mat):
         plt.ylabel("True Stress")
         plt.legend()
 
-    return pred
+    return L, pred
 
 def optimize(mdata, params_init, params_names, mat, max_iter=5000, print_after=100, plot_after = 100, tol=10e-6,
              alpha=1e-3, b1=0.9, b2=0.999, e=1e-8, lambda_1 = 0,
