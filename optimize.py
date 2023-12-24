@@ -4,7 +4,7 @@ from mat import stress_update, derivative_update
 
 import matplotlib.pyplot as plt, numpy as np
 
-def evaluate(mdata, params, mat):
+def evaluate(mdata, params, mat, plot):
 
     """
     Plots the prediction's fit to actual stress-strain data
@@ -13,6 +13,11 @@ def evaluate(mdata, params, mat):
                 [(t, strain, stress), ...]
         params: list of material parameters
         mat   : string identifying which material model to use
+        plot  : True/False to plot the results
+    Outputs
+        L     : the loss
+        pred  : list of data with each element a tuple of lists
+                [(t, strain, stress_pred), ...]
     """
 
     # Does the result fit the stress-strain curve well?
@@ -37,39 +42,44 @@ def evaluate(mdata, params, mat):
         
         pred.append((t, strain, stress_hat))
 
-        # P11 and Stretch
-        plt.figure(figsize=(10, 4))
+        if plot == True:
+            # P11 and Stretch
+            plt.figure(figsize=(10, 4))
 
-        plt.subplot(1, 2, 1)
-        plt.plot(t, stress_hat/np.exp(strain), label = "Predicted")
-        plt.scatter(t, stress/np.exp(strain), label = "True", s=15, c="orange")
-        plt.xlabel("Time")
-        plt.ylabel("P11")
-        plt.legend()
+            plt.subplot(1, 2, 1)
+            plt.plot(t, stress_hat/np.exp(strain), label = "Predicted")
+            plt.scatter(t, stress/np.exp(strain), label = "True", s=15, c="orange")
+            plt.xlabel("Time")
+            plt.ylabel("P11")
+            plt.grid()
+            plt.legend()
 
-        plt.subplot(1, 2, 2)
-        plt.plot(np.exp(strain), stress_hat/np.exp(strain), label = "Predicted")
-        plt.scatter(np.exp(strain), stress/np.exp(strain), label = "True", s=15, c="orange")
-        plt.xlabel("Stretch")
-        plt.ylabel("P11")
-        plt.legend()
+            plt.subplot(1, 2, 2)
+            plt.plot(np.exp(strain), stress_hat/np.exp(strain), label = "Predicted")
+            plt.scatter(np.exp(strain), stress/np.exp(strain), label = "True", s=15, c="orange")
+            plt.xlabel("Stretch")
+            plt.ylabel("P11")
+            plt.grid()
+            plt.legend()
 
-        # True strain and true stress
-        plt.figure(figsize=(10, 4))
+            # True strain and true stress
+            plt.figure(figsize=(10, 4))
 
-        plt.subplot(1, 2, 1)
-        plt.plot(t, stress_hat, label = "Predicted")
-        plt.scatter(t, stress, label = "True", s=15, c="orange")
-        plt.xlabel("Time")
-        plt.ylabel("True Stress")
-        plt.legend()
+            plt.subplot(1, 2, 1)
+            plt.plot(t, stress_hat, label = "Predicted")
+            plt.scatter(t, stress, label = "True", s=15, c="orange")
+            plt.xlabel("Time")
+            plt.ylabel("True Stress")
+            plt.grid()
+            plt.legend()
 
-        plt.subplot(1, 2, 2)
-        plt.plot(strain, stress_hat, label = "Predicted")
-        plt.scatter(strain, stress, label = "True", s=15, c="orange")
-        plt.xlabel("True Strain")
-        plt.ylabel("True Stress")
-        plt.legend()
+            plt.subplot(1, 2, 2)
+            plt.plot(strain, stress_hat, label = "Predicted")
+            plt.scatter(strain, stress, label = "True", s=15, c="orange")
+            plt.xlabel("True Strain")
+            plt.ylabel("True Stress")
+            plt.grid()
+            plt.legend()
 
     return L, pred
 
