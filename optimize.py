@@ -4,7 +4,7 @@ from mat import stress_update, derivative_update
 
 import matplotlib.pyplot as plt, numpy as np
 
-def evaluate(mdata, params, mat, plot):
+def evaluate(mdata, params, mat, plot=True):
 
     """
     Plots the prediction's fit to actual stress-strain data

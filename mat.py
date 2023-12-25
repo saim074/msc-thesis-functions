@@ -1957,11 +1957,12 @@ def ubbmi_du(t, strain, histvars, stress_new, drecurr, params):
     b11_prev_list = histvars[-2]
 
     # History variables from current timestep
-    b11_list = histvars[-1][0]
+    b11_list = histvars[-1]
 
     # Initialize recurrent_derivatives if needed
     if len(drecurr) == 0:
-        db11_init = [0 for j in range(len(params))]
+        # All the viscous parameters with their respective b11s
+        db11_init = [0 for j in range(len(params) - 2)]
         drecurr.append(db11_init)
 
     # Recurrent derivatives from previous timestep
@@ -1990,261 +1991,183 @@ def ubbmi_du(t, strain, histvars, stress_new, drecurr, params):
     lambda_r = np.sqrt(I1/3/N)
     lang = (3-lambda_r**2)/(1-lambda_r**2)
     bbar = Fbar@Fbar.T
-
-    be = np.array(
-        [[b11, 0, 0],
-         [0, 1/np.sqrt(b11), 0],
-         [0, 0, 1/np.sqrt(b11)]]
-    )
-    I1_e = np.trace(be)
-    lambda_r_e = np.sqrt(I1_e/3/N_v)
-    lange = (3-lambda_r_e**2)/(1-lambda_r_e**2)
-
-    tau_v_iso = td(PP, (mu_v/3)*lange*be, 2)
-    tau_v = la.norm(tau_v_iso)/np.sqrt(2)
-    N11 = tau_v_iso[0, 0]/(tau_v*np.sqrt(2))
-    gammadot = sum([aj[j-1]*(tau_v/tau_hat)**j for j in range(1, len(aj)+1)])
-    expo = np.exp(-2*gammadot*N11*dt)
     lambda1_prev = np.exp(strain[-2])
     lambda2_prev = 1/np.sqrt(lambda1_prev)
 
-
-    ### 1. Matrix A
-
-    # ## 1.1. df_lambda2 and dg_lambda2
-    # dtauvol_lambda2 = kappa*(2*lambda1*lambda2)*np.eye(3)
-    # dlang_lambdar = 4*lambda_r/(lambda_r**2 - 1)**2
-    # dlambdar_I1 = 1/(2*np.sqrt(3*N*I1))
-    # dI1_lambda2 = (4/3)*(-lambda1**(4/3)*lambda2**(-7/3) + lambda1**(-2/3)*lambda2**(-1/3))
-    # dbbar_lambda2 = (1/3)*np.array(
-    #     [[-4*lambda1**(4/3)*lambda2**(-7/3), 0, 0],
-    #      [0, 2*lambda1**(-2/3)*lambda2**(-1/3), 0],
-    #      [0, 0, 2*lambda1**(-2/3)*lambda2**(-1/3)]]
-    # )
-    # dlambdar_lambda2 = dlambdar_I1*dI1_lambda2
-    # dtaueiso_lambda2 = td(PP,
-    #                       ((mu/3)*dlang_lambdar*dlambdar_lambda2*bbar + (mu/3)*lang*dbbar_lambda2),
-    #                       2)
-    # df_lambda2 = dtauvol_lambda2[0, 0] + dtaueiso_lambda2[0, 0]
-    # dg_lambda2 = dtauvol_lambda2[1, 1] + dtaueiso_lambda2[1, 1]
-
-    ## 1.1. df_b11
-    dlange_lambdare = 4*lambda_r_e/(lambda_r_e**2 - 1)**2
-    dlambdare_I1e = 1/(2*np.sqrt(3*N_v*I1_e))
-    dI1e_b11 = 1 - 1/(b11**(3/2))
-    dlambdare_b11 = dlambdare_I1e*dI1e_b11
-    dbe_b11 = np.array(
-        [[1, 0, 0],
-         [0, -1/(2*b11**(3/2)), 0],
-         [0, 0, -1/(2*b11**(3/2))]]
-    )
-    dtauviso_b11 = td(PP,
-                      ((mu_v/3)*dlange_lambdare*dlambdare_b11*be + (mu_v/3)*lange*dbe_b11),
-                      2)
-    df_b11 = dtauviso_b11[0, 0] - dtauviso_b11[1, 1]
-    # dg_b11 = dtauviso_b11[1, 1]
-
-    # ## 1.3. dh_lambda2
-    # betr11 = ((lambda1*lambda2_prev)/(lambda2*lambda1_prev))**(4/3)*b11_prev
-    # dbetr11_lambda2 = \
-    # -(4/(3*lambda2))*((lambda1*lambda2_prev)/(lambda2*lambda1_prev))**(4/3)*b11_prev
-    # dbe11_lambda2 = expo*dbetr11_lambda2
-    # dh_lambda2 = dbe11_lambda2
-
-    ## 1.2. dg_b11
-    dtauv_tauviso = tau_v_iso/(2*tau_v)
-    dtauv_b11 = td(dtauv_tauviso, dtauviso_b11, 2)
-    dgammadot_b11 = (1/tau_hat)*sum([j*aj[j-1]*(tau_v/tau_hat)**(j-1) for j in range(1, len(aj)+1)])*dtauv_b11
-    dexpo_N11 = -2*gammadot*dt*expo
-    dN11_b11 = \
-    (la.norm(tau_v_iso)*dtauviso_b11[0, 0] - (np.sqrt(2)*dtauv_b11)*(tau_v_iso[0, 0]))/(la.norm(tau_v_iso)**2)
-    dexpo_gammadot = -2*N11*dt*expo
-    dexpo_b11 = dexpo_gammadot*dgammadot_b11 + dexpo_N11*dN11_b11
-    betr11 = ((lambda1*lambda2_prev)/(lambda2*lambda1_prev))**(4/3)*b11_prev
-    dbe11_b11 = dexpo_b11*betr11
-    dg_b11 = dbe11_b11
-
-    ## 1.5. Construct the matrix A and A_inv
-    A = np.array(
-        [[1, -df_b11],
-         [0, 1-dg_b11]]
-    )
-    A_inv = la.inv(A)
-
-    ### 2. kappa
-
-    ## 2.1. b_kappa
-    # db11prev_kappa = db11prev[0]
-    # dlambda2prev_kappa = dlambda2prev[0]
-    # dtauvol_kappa = (J-1)*np.eye(3)
-    # dbe11_b11prev = expo*((lambda1*lambda2_prev)/(lambda2*lambda1_prev))**(4/3)
-    # dbe11_lambda2prev = \
-    # expo*(4/(3*lambda2_prev))*((lambda1*lambda2_prev)/(lambda2*lambda1_prev))**(4/3)*b11_prev
-    # df_kappa = dtauvol_kappa[0, 0]
-    # dg_kappa = dtauvol_kappa[1, 1]
-    # dh_kappa = 0
-    # dh_b11prev = dbe11_b11prev
-    # dh_lambda2prev = dbe11_lambda2prev
-    # b_kappa = np.array(
-    #     [[df_kappa],
-    #      [dg_kappa],
-    #      [dh_kappa + dh_b11prev*db11prev_kappa + dh_lambda2prev*dlambda2prev_kappa]]
-    # )
-
-    # ## 2.2. solve for d_kappa
-    # d_kappa = A_inv@b_kappa
-    # dstress_kappa = d_kappa[0, 0]
-    # dlambda2_kappa = d_kappa[1, 0]
-    # db11_kappa = d_kappa[2, 0]
-
-    ### 2. mu
-
-    ## 2.1. b_mu
-    db11prev_mu = db11prev[0]
-    # dlambda2prev_mu = dlambda2prev[1]
+    ## 1. Elastic parameters
+    # 1.1. dstress_mu
     dtaueiso_mu = td(PP,
                      (1/3)*lang*bbar,
                      2)
-    dbe11_b11prev = expo*((lambda1*lambda2_prev)/(lambda2*lambda1_prev))**(4/3)
     df_mu = dtaueiso_mu[0, 0] - dtaueiso_mu[1, 1]
-    # dg_mu = dtaueiso_mu[1, 1]
-    dg_mu = 0
-    dg_b11prev = dbe11_b11prev
-    b_mu = np.array(
-        [[df_mu],
-         [dg_mu + dg_b11prev*db11prev_mu]]
-    )
-
-    ## 2.2. solve for d_mu
-    d_mu = A_inv@b_mu
-    dstress_mu = d_mu[0, 0]
-    # dlambda2_mu = d_mu[1, 0]
-    db11_mu = d_mu[1, 0]
-
-    ### 3. mu_v
-
-    ## 3.1. b_muv
-    db11prev_muv = db11prev[1]
-    # dlambda2prev_muv = dlambda2prev[2]
-    dtauviso_muv = td(PP,
-                      (1/3)*lange*be,
-                      2)
-    dgammadot_tauviso = (1/tau_hat)*sum([j*aj[j-1]*(tau_v/tau_hat)**(j-1) for
-                                         j in range(1, len(aj)+1)])*dtauv_tauviso
-    dtauviso11_tauviso = np.zeros((3, 3))
-    dtauviso11_tauviso[0, 0] = 1
-    dN11_tauviso = \
-     (la.norm(tau_v_iso)*dtauviso11_tauviso - tau_v_iso[0, 0]*(np.sqrt(2)*dtauv_tauviso))/(la.norm(tau_v_iso)**2)
-    dexpo_tauviso = dexpo_gammadot*dgammadot_tauviso + dexpo_N11*dN11_tauviso
-    dbe11_tauviso = dexpo_tauviso*betr11
-    dbe11_muv = td(dbe11_tauviso, dtauviso_muv, 2)
-    df_muv = dtauviso_muv[0, 0] - dtauviso_muv[1, 1]
-    # dg_muv = dtauviso_muv[1, 1]
-    dg_muv = dbe11_muv
-    b_muv = np.array(
-        [[df_muv],
-         [dg_muv + dg_b11prev*db11prev_muv]]
-    )
-
-    ## 3.2. solve for d_muv
-    d_muv = A_inv@b_muv
-    dstress_muv = d_muv[0, 0]
-    # dlambda2_muv = d_muv[1, 0]
-    db11_muv = d_muv[1, 0]
-
-    ### 4. N
-
-    ## 4.1. b_N
-    db11prev_N = db11prev[2]
-    # dlambda2prev_N = dlambda2prev[3]
+    dstress_mu = df_mu
+    # 1.2. dstress_N
     dlambdar_N = -(1/(2*N))*np.sqrt(I1/(3*N))
     dlang_lambdar = 4*lambda_r/(lambda_r**2 - 1)**2
     dtaueiso_N = td(PP, (mu/3)*dlang_lambdar*dlambdar_N*bbar, 2)
     df_N = dtaueiso_N[0, 0] - dtaueiso_N[1, 1]
-    # dg_N = dtaueiso_N[1, 1]
-    dg_N = 0
-    b_N = np.array(
-        [[df_N],
-         [dg_N + dg_b11prev*db11prev_N]]
-    )
+    dstress_N = df_N
 
-    ## 4.2. solve for d_N
-    d_N = A_inv@b_N
-    dstress_N = d_N[0, 0]
-    # dlambda2_N = d_N[1, 0]
-    db11_N = d_N[1, 0]
+    # FOR EACH BRANCH
+    dstress_muv_list = []
+    dstress_Nv_list = []
+    dstress_tauhat_list = []
+    dstress_aj_list = []
+    db11 = []
+    for branch, (mu_v, N_v, tau_hat, aj, b11, b11_prev) in \
+        enumerate(zip(mu_v_list, N_v_list, tau_hat_list, aj_list, b11_list, b11_prev_list)):
 
-    ### 5. N_v
+        # Necessary value for the branch
+        be = np.array(
+            [[b11, 0, 0],
+             [0, 1/np.sqrt(b11), 0],
+             [0, 0, 1/np.sqrt(b11)]]
+        )
+        I1_e = np.trace(be)
+        lambda_r_e = np.sqrt(I1_e/3/N_v)
+        lange = (3-lambda_r_e**2)/(1-lambda_r_e**2)
 
-    ## 5.1. b_Nv
-    db11prev_Nv = db11prev[3]
-    # dlambda2prev_Nv = dlambda2prev[4]
-    dlambdare_Nv = -(1/(2*N_v))*np.sqrt(I1_e/(3*N_v))
-    dtauviso_Nv = td(PP, (mu_v/3)*dlange_lambdare*dlambdare_Nv*be)
-    dbe11_Nv = td(dbe11_tauviso, dtauviso_Nv, 2)
-    df_Nv = dtauviso_Nv[0, 0] - dtauviso_Nv[1, 1]
-    # dg_Nv = dtauviso_Nv[1, 1]
-    dg_Nv = dbe11_Nv
-    b_Nv = np.array(
-        [[df_Nv],
-         [dg_Nv + dg_b11prev*db11prev_Nv]]
-    )
+        tau_v_iso = td(PP, (mu_v/3)*lange*be, 2)
+        tau_v = la.norm(tau_v_iso)/np.sqrt(2)
+        N11 = tau_v_iso[0, 0]/(tau_v*np.sqrt(2))
+        gammadot = sum([aj[j-1]*(tau_v/tau_hat)**j for j in range(1, len(aj)+1)])
+        expo = np.exp(-2*gammadot*N11*dt)
 
-    ## 5.2. solve for d_Nv
-    d_Nv = A_inv@b_Nv
-    dstress_Nv = d_Nv[0, 0]
-    # dlambda2_Nv = d_Nv[1, 0]
-    db11_Nv = d_Nv[1, 0]
+        ## 2. Matrix A
 
-    ### 6. tau_hat
+        # 2.1. df_b11
+        dlange_lambdare = 4*lambda_r_e/(lambda_r_e**2 - 1)**2
+        dlambdare_I1e = 1/(2*np.sqrt(3*N_v*I1_e))
+        dI1e_b11 = 1 - 1/(b11**(3/2))
+        dlambdare_b11 = dlambdare_I1e*dI1e_b11
+        dbe_b11 = np.array(
+            [[1, 0, 0],
+             [0, -1/(2*b11**(3/2)), 0],
+             [0, 0, -1/(2*b11**(3/2))]]
+        )
+        dtauviso_b11 = td(PP,
+                          ((mu_v/3)*dlange_lambdare*dlambdare_b11*be + (mu_v/3)*lange*dbe_b11),
+                          2)
+        df_b11 = dtauviso_b11[0, 0] - dtauviso_b11[1, 1]
 
-    ## 6.1. b_tauhat
-    db11prev_tauhat = db11prev[4]
-    # dlambda2prev_tauhat = dlambda2prev[5]
-    dgammadot_tauhat = -(1/tau_hat)*sum([j*aj[j-1]*(tau_v/tau_hat)**j for j in range(1, len(aj)+1)])
-    dbe11_tauhat = dexpo_gammadot*dgammadot_tauhat*betr11
-    df_tauhat = 0
-    dg_tauhat = dbe11_tauhat
-    b_tauhat = np.array(
-        [[df_tauhat],
-         [dg_tauhat + dg_b11prev*db11prev_tauhat]]
-    )
+        # 2.2. dg_b11
+        dtauv_tauviso = tau_v_iso/(2*tau_v)
+        dtauv_b11 = td(dtauv_tauviso, dtauviso_b11, 2)
+        dgammadot_b11 = (1/tau_hat)*sum([j*aj[j-1]*(tau_v/tau_hat)**(j-1) for j in range(1, len(aj)+1)])*dtauv_b11
+        dexpo_N11 = -2*gammadot*dt*expo
+        dN11_b11 = \
+        (la.norm(tau_v_iso)*dtauviso_b11[0, 0] - (np.sqrt(2)*dtauv_b11)*(tau_v_iso[0, 0]))/(la.norm(tau_v_iso)**2)
+        dexpo_gammadot = -2*N11*dt*expo
+        dexpo_b11 = dexpo_gammadot*dgammadot_b11 + dexpo_N11*dN11_b11
+        betr11 = ((lambda1*lambda2_prev)/(lambda2*lambda1_prev))**(4/3)*b11_prev
+        dbe11_b11 = dexpo_b11*betr11
+        dg_b11 = dbe11_b11
+    
+        # 2.3. Construct the matrix A and A_inv
+        A = np.array(
+            [[1, -df_b11],
+             [0, 1-dg_b11]]
+        )
+        A_inv = la.inv(A)
 
-    ## 6.2. solve for d_tauhat
-    d_tauhat = A_inv@b_tauhat
-    dstress_tauhat = d_tauhat[0, 0]
-    # dlambda2_tauhat = d_tauhat[1, 0]
-    db11_tauhat = d_tauhat[1, 0]
+        # Number of branch params
+        num_branch_params = 3 + len(aj)
 
-    ### 7. aj
+        ## 3. mu_v
 
-    dstress_aj = []
-    db11_aj = []
-    for j in range(1, len(aj)+1):
-
-        ## 7.1. b_aj
-        db11prev_aj = db11prev[4+j]
-        # dlambda2prev_aj = dlambda2prev[5+j]
-        dgammadot_aj = (tau_v/tau_hat)**j
-        dbe11_aj = dexpo_gammadot*dgammadot_aj*betr11
-        df_aj = 0
-        dg_aj = dbe11_aj
-        b_aj = np.array(
-            [[df_aj],
-            [dg_aj + dg_b11prev*db11prev_aj]]
+        # 3.1. b_muv
+        dbe11_b11prev = expo*((lambda1*lambda2_prev)/(lambda2*lambda1_prev))**(4/3)
+        db11prev_muv = db11prev[num_branch_params*branch]
+        dtauviso_muv = td(PP,
+                          (1/3)*lange*be,
+                          2)
+        dgammadot_tauviso = (1/tau_hat)*sum([j*aj[j-1]*(tau_v/tau_hat)**(j-1) for
+                                             j in range(1, len(aj)+1)])*dtauv_tauviso
+        dtauviso11_tauviso = np.zeros((3, 3))
+        dtauviso11_tauviso[0, 0] = 1
+        dN11_tauviso = \
+         (la.norm(tau_v_iso)*dtauviso11_tauviso - tau_v_iso[0, 0]*(np.sqrt(2)*dtauv_tauviso))/(la.norm(tau_v_iso)**2)
+        dexpo_tauviso = dexpo_gammadot*dgammadot_tauviso + dexpo_N11*dN11_tauviso
+        dbe11_tauviso = dexpo_tauviso*betr11
+        dbe11_muv = td(dbe11_tauviso, dtauviso_muv, 2)
+        df_muv = dtauviso_muv[0, 0] - dtauviso_muv[1, 1]
+        dg_b11prev = dbe11_b11prev
+        dg_muv = dbe11_muv
+        b_muv = np.array(
+            [[df_muv],
+             [dg_muv + dg_b11prev*db11prev_muv]]
         )
 
-        ## 7.2. solve for d_aj
-        d_aj = A_inv@b_aj
-        dstress_aj.append(d_aj[0, 0])
-        # dlambda2_aj.append(d_aj[1, 0])
-        db11_aj.append(d_aj[1, 0])
+        # 3.2. solve for d_muv
+        d_muv = A_inv@b_muv
+        dstress_muv_list.append(d_muv[0, 0])
+        db11.append(d_muv[1, 0])
+
+        ## 4. N_v
+
+        # 4.1. b_Nv
+        db11prev_Nv = db11prev[num_branch_params*branch + 1]
+        dlambdare_Nv = -(1/(2*N_v))*np.sqrt(I1_e/(3*N_v))
+        dtauviso_Nv = td(PP, (mu_v/3)*dlange_lambdare*dlambdare_Nv*be)
+        dbe11_Nv = td(dbe11_tauviso, dtauviso_Nv, 2)
+        df_Nv = dtauviso_Nv[0, 0] - dtauviso_Nv[1, 1]
+        dg_Nv = dbe11_Nv
+        b_Nv = np.array(
+            [[df_Nv],
+             [dg_Nv + dg_b11prev*db11prev_Nv]]
+        )
+
+        # 4.2. solve for d_Nv
+        d_Nv = A_inv@b_Nv
+        dstress_Nv_list.append(d_Nv[0, 0])
+        db11.append(d_Nv[1, 0])
+
+        ## 5. tau_hat
+
+        # 5.1. b_tauhat
+        db11prev_tauhat = db11prev[num_branch_params*branch + 2]
+        dgammadot_tauhat = -(1/tau_hat)*sum([j*aj[j-1]*(tau_v/tau_hat)**j for j in range(1, len(aj)+1)])
+        dbe11_tauhat = dexpo_gammadot*dgammadot_tauhat*betr11
+        df_tauhat = 0
+        dg_tauhat = dbe11_tauhat
+        b_tauhat = np.array(
+            [[df_tauhat],
+             [dg_tauhat + dg_b11prev*db11prev_tauhat]]
+        )
+
+        # 5.2. solve for d_tauhat
+        d_tauhat = A_inv@b_tauhat
+        dstress_tauhat_list.append(d_tauhat[0, 0])
+        db11.append(d_tauhat[1, 0])
+
+        ## 6. aj
+
+        dstress_aj = []
+        db11_aj = []
+        for j in range(1, len(aj)+1):
+
+            # 6.1. b_aj
+            db11prev_aj = db11prev[num_branch_params*branch + 2 + j]
+            dgammadot_aj = (tau_v/tau_hat)**j
+            dbe11_aj = dexpo_gammadot*dgammadot_aj*betr11
+            df_aj = 0
+            dg_aj = dbe11_aj
+            b_aj = np.array(
+                [[df_aj],
+                [dg_aj + dg_b11prev*db11prev_aj]]
+            )
+
+            # 6.2. solve for d_aj
+            d_aj = A_inv@b_aj
+            dstress_aj.append(d_aj[0, 0])
+            db11_aj.append(d_aj[1, 0])
+
+        dstress_aj_list.append(dstress_aj)
+        db11.extend(db11_aj)
 
     # Stress and Recurrent derivatives
-    dstress = [dstress_mu, dstress_muv, dstress_N, dstress_Nv,
-               dstress_tauhat] + dstress_aj
-    db11 = [db11_mu, db11_muv, db11_N, db11_Nv,
-            db11_tauhat] + db11_aj
+    dstress = [dstress_mu] + dstress_muv_list + [dstress_N] + dstress_Nv_list + \
+               dstress_tauhat_list + [item for row in dstress_aj_list for item in row]
     drecurr_new = db11
     drecurr.append(drecurr_new)
 
