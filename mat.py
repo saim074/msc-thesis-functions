@@ -1796,7 +1796,7 @@ def ubbmi_su(t, strain, histvars, params):
     count_max = 100
 
     # Material parameters
-    num_branches = 2
+    num_branches = 3
     mu = params[0]
     mu_v_list = params[1: 1 + num_branches]
     N = params[1 + num_branches]
