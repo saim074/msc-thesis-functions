@@ -2202,7 +2202,7 @@ def ubbm2i_su(t, strain, histvars, params):
     count_max = 100
 
     # Material parameters
-    num_branches = 2
+    num_branches = 1
     mu = params[0]
     mu_v_list = params[1: 1 + num_branches]
     N = params[1 + num_branches]
@@ -2241,12 +2241,11 @@ def ubbm2i_su(t, strain, histvars, params):
     Fbar = F.copy()
     bbar = Fbar@Fbar.T
     I1 = np.trace(bbar)
-    I2 = 0.5*(I1**2 - np.trace(bbar@bbar))
     lambda_r = np.sqrt(I1/3/N)
     lang = (3-lambda_r**2)/(1-lambda_r**2)
 
     ## Unimodular elastic kirchoff stress
-    taubar_e = (mu*lang/3)*bbar + 2*c*(I2*bbar - bbar@bbar)
+    taubar_e = (mu*lang/3)*bbar + 2*c*(I1*bbar - bbar@bbar)
 
     ## Unimodular viscous kirchoff stress (Newton update, each branch)
     F_prev = np.eye(3)
@@ -2280,14 +2279,13 @@ def ubbm2i_su(t, strain, histvars, params):
             # Necessary values
             be = n_a@np.diag(np.exp(eps_a[:, 0])**2)@la.inv(n_a)
             I1_e = np.trace(be)
-            I2_e = 0.5*(I1_e**2 - np.trace(be@be))
             lambda_r_e = np.sqrt(I1_e/3/N_v)
             lang_e = (3-lambda_r_e**2)/(1-lambda_r_e**2)
             lambda_e_a_sq, _ = la.eig(be)
             lambda_e_a = np.sqrt(lambda_e_a_sq).reshape(-1, 1)
 
             # Unimodular viscous kirchoff stress
-            taubar_v = (mu_v*lang_e/3)*be + 2*c_v*(I2_e*be - be@be)
+            taubar_v = (mu_v*lang_e/3)*be + 2*c_v*(I1_e*be - be@be)
             tau_v_iso = td(PP, taubar_v, 2)
             tau_v = la.norm(tau_v_iso)/np.sqrt(2)
             devtau_a = la.eig(tau_v_iso)[0].reshape(-1, 1)
@@ -2303,9 +2301,8 @@ def ubbm2i_su(t, strain, histvars, params):
             beta2 = dt*gamma_dot/np.sqrt(2)/tau_v
             T = (2/3)*mu_v*((3-lambda_r_e**2)/(1-lambda_r_e**2))*np.diag((lambda_e_a**2).reshape(3)) - \
                 (4/9)*(mu_v/N_v)*(1/(1-lambda_r_e**2))*(lambda_e_a**2)*(lambda_e_a**2).reshape(3) + \
-                4*c_v*I1_e*(lambda_e_a**2)*(lambda_e_a**2).reshape(3) - \
-                4*c_v*(lambda_e_a**2)*(lambda_e_a**4).reshape(3) + \
-                4*c_v*I2_e*np.diag((lambda_e_a**2).reshape(3)) - \
+                4*c_v*(lambda_e_a**2)*(lambda_e_a**2).reshape(3) + \
+                4*c_v*I1_e*np.diag((lambda_e_a**2).reshape(3)) - \
                 8*c_v*np.diag((lambda_e_a**4).reshape(3))
             Tbar = T - (1/3)*np.sum(T, 0)
             D = (devtau_a.reshape(1, 3)@T).reshape(3, 1)
