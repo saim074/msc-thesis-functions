@@ -2441,7 +2441,7 @@ def ubbm2i_du(t, strain, histvars, stress_new, drecurr, params):
         lambda_r_e = np.sqrt(I1_e/3/N_v)
         lange = (3-lambda_r_e**2)/(1-lambda_r_e**2)
 
-        tau_v_iso = td(PP, (mu_v/3)*lange*be + 2*c_v*(I1_e*bbar - bbar@bbar), 2)
+        tau_v_iso = td(PP, (mu_v/3)*lange*be + 2*c_v*(I1_e*be - be@be), 2)
         tau_v = la.norm(tau_v_iso)/np.sqrt(2)
         N11 = tau_v_iso[0, 0]/(tau_v*np.sqrt(2))
         gammadot = sum([aj[j-1]*(tau_v/tau_hat)**j for j in range(1, len(aj)+1)])
@@ -2506,7 +2506,7 @@ def ubbm2i_du(t, strain, histvars, stress_new, drecurr, params):
         dtauviso11_tauviso = np.zeros((3, 3))
         dtauviso11_tauviso[0, 0] = 1
         dN11_tauviso = \
-         (la.norm(tau_v_iso)*dtauviso11_tauviso - tau_v_iso[0, 0]*(np.sqrt(2)*dtauv_tauviso))/(la.norm(tau_v_iso)**2)
+            (la.norm(tau_v_iso)*dtauviso11_tauviso - tau_v_iso[0, 0]*(np.sqrt(2)*dtauv_tauviso))/(la.norm(tau_v_iso)**2)
         dexpo_tauviso = dexpo_gammadot*dgammadot_tauviso + dexpo_N11*dN11_tauviso
         dbe11_tauviso = dexpo_tauviso*betr11
         dbe11_muv = td(dbe11_tauviso, dtauviso_muv, 2)
@@ -2605,8 +2605,8 @@ def ubbm2i_du(t, strain, histvars, stress_new, drecurr, params):
         db11.extend(db11_aj)
 
     # Stress and Recurrent derivatives
-    dstress = [dstress_mu] + dstress_muv_list + [dstress_N] + dstress_Nv_list + dstress_cv_list + \
-               dstress_tauhat_list + [item for row in dstress_aj_list for item in row]
+    dstress = [dstress_mu] + dstress_muv_list + [dstress_N] + dstress_Nv_list + [dstress_c] + \
+        dstress_cv_list + dstress_tauhat_list + [item for row in dstress_aj_list for item in row]
     drecurr_new = db11
     drecurr.append(drecurr_new)
 
