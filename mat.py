@@ -2209,7 +2209,7 @@ def ubbm2i_su(t, strain, histvars, params):
     N_v_list = params[2+num_branches: 2 + 2 * num_branches]
     c = params[2 + 2 * num_branches]
     c_v_list = params[3 + 2 * num_branches: 3 + 3 * num_branches]
-    tau_hat_list = params[3 + 3 * num_branches: 3 + 4 * num_branches]
+    tauhinv_list = params[3 + 3 * num_branches: 3 + 4 * num_branches]
     aj_list = []
     num_aj = int((len(params) - (3 + 4 * num_branches))/num_branches)
     for branch in range(num_branches):
@@ -2256,8 +2256,8 @@ def ubbm2i_su(t, strain, histvars, params):
 
     b11_new_list = [0]*num_branches
     taubar_v_list = [np.eye(3)]*num_branches
-    for branch, (mu_v, N_v, c_v, tau_hat, aj, b11_prev) in \
-        enumerate(zip(mu_v_list, N_v_list, c_v_list, tau_hat_list, aj_list, b11_prev_list)):
+    for branch, (mu_v, N_v, c_v, tauhinv, aj, b11_prev) in \
+        enumerate(zip(mu_v_list, N_v_list, c_v_list, tauhinv_list, aj_list, b11_prev_list)):
 
         be_prev = np.eye(3)
         be_prev[0, 0] = b11_prev
@@ -2291,12 +2291,12 @@ def ubbm2i_su(t, strain, histvars, params):
             devtau_a = la.eig(tau_v_iso)[0].reshape(-1, 1)
 
             # Effective creep rate
-            gamma_dot = sum([aj[j-1]*(tau_v/tau_hat)**j for j in range(1, len(aj)+1)])
+            gamma_dot = sum([aj[j-1]*(tauhinv*tau_v)**j for j in range(1, len(aj)+1)])
 
             res = eps_a + dt*gamma_dot*devtau_a/np.sqrt(2)/tau_v - eps_a_tr
 
             # Local tangent
-            beta1 = (dt/2/np.sqrt(2))*(1/tau_hat**3)*sum([aj[j-1]*(j-1)*(tau_v/tau_hat)**(j-3) for
+            beta1 = (dt/2/np.sqrt(2))*(tauhinv**3)*sum([aj[j-1]*(j-1)*(tauhinv*tau_v)**(j-3) for
                                                             j in range(2, len(aj)+1)])
             beta2 = dt*gamma_dot/np.sqrt(2)/tau_v
             T = (2/3)*mu_v*((3-lambda_r_e**2)/(1-lambda_r_e**2))*np.diag((lambda_e_a**2).reshape(3)) - \
@@ -2358,7 +2358,7 @@ def ubbm2i_du(t, strain, histvars, stress_new, drecurr, params):
     N_v_list = params[2+num_branches: 2 + 2 * num_branches]
     c = params[2 + 2 * num_branches]
     c_v_list = params[3 + 2 * num_branches: 3 + 3 * num_branches]
-    tau_hat_list = params[3 + 3 * num_branches: 3 + 4 * num_branches]
+    tauhinv_list = params[3 + 3 * num_branches: 3 + 4 * num_branches]
     aj_list = []
     num_aj = int((len(params) - (3 + 4 * num_branches))/num_branches)
     for branch in range(num_branches):
@@ -2425,11 +2425,11 @@ def ubbm2i_du(t, strain, histvars, stress_new, drecurr, params):
     dstress_muv_list = []
     dstress_Nv_list = []
     dstress_cv_list = []
-    dstress_tauhat_list = []
+    dstress_tauhinv_list = []
     dstress_aj_list = []
     db11 = []
-    for branch, (mu_v, N_v, c_v, tau_hat, aj, b11, b11_prev) in \
-        enumerate(zip(mu_v_list, N_v_list, c_v_list, tau_hat_list, aj_list, b11_list, b11_prev_list)):
+    for branch, (mu_v, N_v, c_v, tauhinv, aj, b11, b11_prev) in \
+        enumerate(zip(mu_v_list, N_v_list, c_v_list, tauhinv_list, aj_list, b11_list, b11_prev_list)):
 
         # Necessary value for the branch
         be = np.array(
@@ -2444,7 +2444,7 @@ def ubbm2i_du(t, strain, histvars, stress_new, drecurr, params):
         tau_v_iso = td(PP, (mu_v/3)*lange*be + 2*c_v*(I1_e*be - be@be), 2)
         tau_v = la.norm(tau_v_iso)/np.sqrt(2)
         N11 = tau_v_iso[0, 0]/(tau_v*np.sqrt(2))
-        gammadot = sum([aj[j-1]*(tau_v/tau_hat)**j for j in range(1, len(aj)+1)])
+        gammadot = sum([aj[j-1]*(tauhinv*tau_v)**j for j in range(1, len(aj)+1)])
         expo = np.exp(-2*gammadot*N11*dt)
 
         ## 2. Matrix A
@@ -2473,7 +2473,7 @@ def ubbm2i_du(t, strain, histvars, stress_new, drecurr, params):
         # 2.2. dg_b11
         dtauv_tauviso = tau_v_iso/(2*tau_v)
         dtauv_b11 = td(dtauv_tauviso, dtauviso_b11, 2)
-        dgammadot_b11 = (1/tau_hat)*sum([j*aj[j-1]*(tau_v/tau_hat)**(j-1) for j in range(1, len(aj)+1)])*dtauv_b11
+        dgammadot_b11 = (tauhinv)*sum([j*aj[j-1]*(tauhinv*tau_v)**(j-1) for j in range(1, len(aj)+1)])*dtauv_b11
         dexpo_N11 = -2*gammadot*dt*expo
         dN11_b11 = \
         (la.norm(tau_v_iso)*dtauviso_b11[0, 0] - (np.sqrt(2)*dtauv_b11)*(tau_v_iso[0, 0]))/(la.norm(tau_v_iso)**2)
@@ -2501,7 +2501,7 @@ def ubbm2i_du(t, strain, histvars, stress_new, drecurr, params):
         dtauviso_muv = td(PP,
                           (1/3)*lange*be,
                           2)
-        dgammadot_tauviso = (1/tau_hat)*sum([j*aj[j-1]*(tau_v/tau_hat)**(j-1) for
+        dgammadot_tauviso = (tauhinv)*sum([j*aj[j-1]*(tauhinv*tau_v)**(j-1) for
                                              j in range(1, len(aj)+1)])*dtauv_tauviso
         dtauviso11_tauviso = np.zeros((3, 3))
         dtauviso11_tauviso[0, 0] = 1
@@ -2561,23 +2561,23 @@ def ubbm2i_du(t, strain, histvars, stress_new, drecurr, params):
         dstress_cv_list.append(d_cv[0, 0])
         db11.append(d_cv[1, 0])
 
-        ## 6. tau_hat
+        ## 6. tauhinv
 
-        # 6.1. b_tauhat
-        db11prev_tauhat = db11prev[num_branch_params*branch + 3]
-        dgammadot_tauhat = -(1/tau_hat)*sum([j*aj[j-1]*(tau_v/tau_hat)**j for j in range(1, len(aj)+1)])
-        dbe11_tauhat = dexpo_gammadot*dgammadot_tauhat*betr11
-        df_tauhat = 0
-        dg_tauhat = dbe11_tauhat
-        b_tauhat = np.array(
-            [[df_tauhat],
-             [dg_tauhat + dg_b11prev*db11prev_tauhat]]
+        # 6.1. b_tauhinv
+        db11prev_tauhinv = db11prev[num_branch_params*branch + 3]
+        dgammadot_tauhinv = (1/tauhinv)*sum([j*aj[j-1]*(tauhinv*tau_v)**j for j in range(1, len(aj)+1)])
+        dbe11_tauhinv = dexpo_gammadot*dgammadot_tauhinv*betr11
+        df_tauhinv = 0
+        dg_tauhinv = dbe11_tauhinv
+        b_tauhinv = np.array(
+            [[df_tauhinv],
+             [dg_tauhinv + dg_b11prev*db11prev_tauhinv]]
         )
 
-        # 6.2. solve for d_tauhat
-        d_tauhat = A_inv@b_tauhat
-        dstress_tauhat_list.append(d_tauhat[0, 0])
-        db11.append(d_tauhat[1, 0])
+        # 6.2. solve for d_tauhinv
+        d_tauhinv = A_inv@b_tauhinv
+        dstress_tauhinv_list.append(d_tauhinv[0, 0])
+        db11.append(d_tauhinv[1, 0])
 
         ## 7. aj
 
@@ -2587,7 +2587,7 @@ def ubbm2i_du(t, strain, histvars, stress_new, drecurr, params):
 
             # 7.1. b_aj
             db11prev_aj = db11prev[num_branch_params*branch + 3 + j]
-            dgammadot_aj = (tau_v/tau_hat)**j
+            dgammadot_aj = (tauhinv*tau_v)**j
             dbe11_aj = dexpo_gammadot*dgammadot_aj*betr11
             df_aj = 0
             dg_aj = dbe11_aj
@@ -2606,7 +2606,7 @@ def ubbm2i_du(t, strain, histvars, stress_new, drecurr, params):
 
     # Stress and Recurrent derivatives
     dstress = [dstress_mu] + dstress_muv_list + [dstress_N] + dstress_Nv_list + [dstress_c] + \
-        dstress_cv_list + dstress_tauhat_list + [item for row in dstress_aj_list for item in row]
+        dstress_cv_list + dstress_tauhinv_list + [item for row in dstress_aj_list for item in row]
     drecurr_new = db11
     drecurr.append(drecurr_new)
 
