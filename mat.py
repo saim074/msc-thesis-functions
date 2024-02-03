@@ -2674,7 +2674,7 @@ def umri_su(t, strain, histvars, params):
     I1 = np.trace(bbar)
 
     ## Unimodular elastic kirchoff stress
-    taubar_e = 2(c1 + I1*c2)*bbar - 2*c2*bbar@bbar
+    taubar_e = 2*(c1 + I1*c2)*bbar - 2*c2*bbar@bbar
 
     ## Unimodular viscous kirchoff stress (Newton update, each branch)
     F_prev = np.eye(3)
