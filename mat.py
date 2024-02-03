@@ -37,6 +37,9 @@ def stress_update(t, strain, histvars, params, mat):
     elif mat == "ubbm2i":
         stress_new, histvars = \
         ubbm2i_su(t, strain, histvars, params)
+    elif mat == "umri":
+        stress_new, histvars = \
+        umri_su(t, strain, histvars, params)
 
     return stress_new, histvars
 
@@ -76,6 +79,9 @@ def derivative_update(t, strain, histvars, stress_new, drecurr, params, mat):
     elif mat == "ubbm2i":
         dstress, drecurr = \
         ubbm2i_du(t, strain, histvars, stress_new, drecurr, params)
+    elif mat == "umri":
+        dstress, drecurr = \
+        umri_du(t, strain, histvars, stress_new, drecurr, params)
 
     return dstress, drecurr
 
@@ -2727,7 +2733,7 @@ def umri_su(t, strain, histvars, params):
                                                             j in range(2, len(aj)+1)])
             beta2 = dt*gamma_dot/np.sqrt(2)/tau_v
             T = 4*c2_v*(lambda_e_a**2)*(lambda_e_a**2).reshape(3) + \
-                4*(c1_v + I1_e*c2_v)**np.diag((lambda_e_a**2).reshape(3)) - \
+                4*(c1_v + I1_e*c2_v)*np.diag((lambda_e_a**2).reshape(3)) - \
                 8*c2_v*np.diag((lambda_e_a**4).reshape(3))
             Tbar = T - (1/3)*np.sum(T, 0)
             D = (devtau_a.reshape(1, 3)@T).reshape(3, 1)
@@ -2758,7 +2764,7 @@ def umri_su(t, strain, histvars, params):
 
     return stress_new, histvars
 
-def ubbm2i_du(t, strain, histvars, stress_new, drecurr, params):
+def umri_du(t, strain, histvars, stress_new, drecurr, params):
     """
     Update stress and history variables using homogenous uniaxial mooney-rivlin + viscoelastic model
     Incompressible (J = 1)
@@ -2796,7 +2802,7 @@ def ubbm2i_du(t, strain, histvars, stress_new, drecurr, params):
     # Initialize recurrent_derivatives if needed
     if len(drecurr) == 0:
         # All the viscous parameters with their respective b11s
-        db11_init = [0 for j in range(len(params) - 3)]
+        db11_init = [0 for j in range(len(params) - 2)]
         drecurr.append(db11_init)
 
     # Recurrent derivatives from previous timestep
@@ -2864,10 +2870,7 @@ def ubbm2i_du(t, strain, histvars, stress_new, drecurr, params):
         ## 2. Matrix A
 
         # 2.1. df_b11
-        # dlange_lambdare = 4*lambda_r_e/(lambda_r_e**2 - 1)**2
-        # dlambdare_I1e = 1/(2*np.sqrt(3*N_v*I1_e))
         dI1e_b11 = 1 - 1/(b11**(3/2))
-        # dlambdare_b11 = dlambdare_I1e*dI1e_b11
         dbe_b11 = np.array(
             [[1, 0, 0],
              [0, -1/(2*b11**(3/2)), 0],
@@ -2879,7 +2882,7 @@ def ubbm2i_du(t, strain, histvars, stress_new, drecurr, params):
              [0, 0, -1/b11**2]]
         )
         dtauviso_b11 = td(PP,
-                          2*(c1_v + I1_e*c2_v)*dbe_b11 + 2*c2_v*dI1e_b11 - 2*c2_v*dbesq_b11,
+                          2*(c1_v + I1_e*c2_v)*dbe_b11 + 2*c2_v*be*dI1e_b11 - 2*c2_v*dbesq_b11,
                           2)
         df_b11 = dtauviso_b11[0, 0] - dtauviso_b11[1, 1]
 
