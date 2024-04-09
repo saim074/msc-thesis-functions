@@ -17,7 +17,7 @@ We develop a framework that automatically discovers an accurate model of finite 
     * `synthetic_data.py` : Functions to generate synthetic data
 * Experiment Folders
     * **Synthetic Data** : Contains  a Jupyter notebook detailing the generation of synthetic data and training of the model.
-    * **VHB4910 Data**: Contains data from [1] for the VHB4910 polymer and a Jupyter notebook detailing the training and evaluation of the model.
+    * **VHB4910 Data**: Contains data from [[1]](#1) for the VHB4910 polymer and a Jupyter notebook detailing the training and evaluation of the model.
 
 ## Usage
 Please refer to the Jupyter Notebooks in the experiments folder.
