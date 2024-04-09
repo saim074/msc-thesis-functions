@@ -43,6 +43,9 @@ def evaluate(mdata, params, mat, plot=True):
         pred.append((t, strain, stress_hat))
 
         if plot == True:
+
+            print('\n --------------------------------- \n')
+
             # P11 and Stretch
             plt.figure(figsize=(10, 4))
 
@@ -80,6 +83,8 @@ def evaluate(mdata, params, mat, plot=True):
             plt.ylabel("True Stress")
             plt.grid()
             plt.legend()
+
+            plt.show()
 
     return L, pred
 
