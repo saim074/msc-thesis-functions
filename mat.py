@@ -539,7 +539,7 @@ def umri_su(t, strain, histvars, params):
     count_max = 100
 
     # Material parameters
-    num_branches = 10
+    num_branches = 5
     c1 = params[0]
     c1_v_list = params[1: 1 + num_branches]
     c2 = params[1 + num_branches]
@@ -618,7 +618,7 @@ def umri_su(t, strain, histvars, params):
             # Unimodular viscous kirchoff stress
             taubar_v = 2*(c1_v + I1_e*c2_v)*be - 2*c2_v*be@be
             tau_v_iso = td(PP, taubar_v, 2)
-            tau_v = la.norm(tau_v_iso)/np.sqrt(2)
+            tau_v = la.norm(tau_v_iso)/np.sqrt(2) + 1e-16
             devtau_a = la.eig(tau_v_iso)[0].reshape(-1, 1)
 
             # Effective creep rate
@@ -627,6 +627,7 @@ def umri_su(t, strain, histvars, params):
             res = eps_a + dt*gamma_dot*devtau_a/np.sqrt(2)/tau_v - eps_a_tr
 
             # Local tangent
+            tauhinv += 1e-16
             beta1 = (dt/2/np.sqrt(2))*(tauhinv**3)*sum([aj[j-1]*(j-1)*(tau_v*tauhinv)**(j-3) for
                                                             j in range(2, len(aj)+1)])
             beta2 = dt*gamma_dot/np.sqrt(2)/tau_v
@@ -647,6 +648,9 @@ def umri_su(t, strain, histvars, params):
             # Store the branch values
             b11_new_list[branch] = be[0, 0]
             taubar_v_list[branch] = taubar_v
+
+        if count == count_max:
+            print('Iteration overflow')
 
     ## Isochoric kirchoff stress and pressure
     taubar = taubar_e + sum(taubar_v_list)
@@ -680,7 +684,7 @@ def umri_du(t, strain, histvars, stress_new, drecurr, params):
     """
 
     # Material parameters
-    num_branches = 10
+    num_branches = 5
     c1 = params[0]
     c1_v_list = params[1: 1 + num_branches]
     c2 = params[1 + num_branches]
