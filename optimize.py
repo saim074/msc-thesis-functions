@@ -39,6 +39,9 @@ def evaluate(mdata, params, mat, plot=True):
 
             #Add to the loss term
             L += (stress_new - stress[n])**2
+
+        #Num of samples
+        num_samples += len(t)
         
         pred.append((t, strain, stress_hat))
 
@@ -85,6 +88,9 @@ def evaluate(mdata, params, mat, plot=True):
             plt.legend()
 
             plt.show()
+
+    #Divide by number of samples
+    L = L/(2*num_samples)
 
     return L, pred
 
