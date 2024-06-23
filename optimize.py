@@ -23,6 +23,7 @@ def evaluate(mdata, params, mat, plot=True):
     # Does the result fit the stress-strain curve well?
     pred = []
     L = 0
+    num_samples = 0
     for t, strain, stress in mdata:
 
         # Initialize empty list for history variables
