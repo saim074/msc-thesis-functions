@@ -56,6 +56,61 @@ def generate_mdata(t, strain, params, mat,
 
     return (t, strain, stress)
 
+def sawtooth_loading(max_val, min_val, start, rate,
+                     cycles = 1, dt = 1, 
+                     plot=True):
+    """
+    Generates time and y values for a sawtooth loading
+    Inputs
+        max_val: maximum value
+        min_val: minimum value
+        start  : start value (0 for strain, 1 for stretch)
+        rate   : absolute rate of loading
+        cycles : number of cycles
+        dt     : approximate delta time
+        plot   : if True, plot time vs y
+    Outputs
+        t: time values
+        y: cyclic load values, either stretch or strain
+    """
+
+    # Loading
+    diff = max_val - start
+    diff_t = diff/rate
+    steps = int(np.ceil(diff_t/dt))
+    t1 = np.linspace(0, diff_t, steps+1)
+    y1 = start + rate * t1
+    # Unloading
+    diff = max_val - min_val
+    diff_t = diff/rate
+    steps = int(np.ceil(diff_t/dt))
+    t2 = (np.linspace(t1[-1], diff_t + t1[-1], steps+1))[1:]
+    y2 = max_val - rate * (t2 - t1[-1])
+    # Loading
+    diff = start - min_val
+    diff_t = diff/rate
+    steps = int(np.ceil(diff_t/dt))
+    t3 = (np.linspace(t2[-1], diff_t + t2[-1], steps+1))[1:]
+    y3 = min_val + rate * (t3 - t2[-1])
+
+    # Number of cycles
+    t = np.array([])
+    y = np.array([])
+    t_cycle = t3[-1]
+    for c in range(cycles):
+        t = np.concatenate([t, 
+                            t1 + t_cycle*c, 
+                            t2 + t_cycle*c, 
+                            t3 + t_cycle*c])
+        y = np.concatenate([y, y1, y2, y3])
+
+
+    # Plot
+    if plot:
+        plt.plot(t, y)
+
+    return t, y
+
 def cyclic_loading(max_val, min_val, start, freq,
                    cycles = 1, dt = 1,
                    plot=True):
