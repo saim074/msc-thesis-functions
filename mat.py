@@ -560,16 +560,11 @@ def umri_su(t, strain, histvars, params):
 
     #Fourth order identity tensor, I kron I, Projection Tensor
     I = np.eye(3)
-    IxI = td(I, I, 0)
-    II = I.reshape(3, 1, 3, 1)*I.reshape(1, 3, 1, 3)
-    PP = II - (1/3)*IxI
+    PP = np.einsum('ij,kl->ikjl', I, I) - (1/3) * np.einsum('ij,kl', I, I)
 
     # Current deformation gradient
-    F = np.eye(3)
     lambda1 = np.exp(strain[-1])
-    F[0, 0] = lambda1
-    F[1, 1] = 1/np.sqrt(lambda1)
-    F[2, 2] = 1/np.sqrt(lambda1)
+    F = np.diag([lambda1, 1/np.sqrt(lambda1), 1/np.sqrt(lambda1)])
     dt = t[-1]-t[-2]
 
     # Necessary values
@@ -581,10 +576,8 @@ def umri_su(t, strain, histvars, params):
     taubar_e = 2*(c1 + I1*c2)*bbar - 2*c2*bbar@bbar
 
     ## Unimodular viscous kirchoff stress (Newton update, each branch)
-    F_prev = np.eye(3)
-    F_prev[0, 0] = np.exp(strain[-2])
-    F_prev[1, 1] = 1/np.sqrt(F_prev[0, 0])
-    F_prev[2, 2] = 1/np.sqrt(F_prev[0, 0])
+    lambda1_prev = np.exp(strain[-2])
+    F_prev = np.diag([lambda1_prev, 1/np.sqrt(lambda1_prev), 1/np.sqrt(lambda1_prev)])
     Fbar_prev = F_prev.copy()
 
     b11_new_list = [0]*num_branches
@@ -592,14 +585,10 @@ def umri_su(t, strain, histvars, params):
     for branch, (c1_v, c2_v, tauhinv, aj, b11_prev) in \
         enumerate(zip(c1_v_list, c2_v_list, tauhinv_list, aj_list, b11_prev_list)):
 
-        be_prev = np.eye(3)
-        be_prev[0, 0] = b11_prev
-        be_prev[1, 1] = 1/np.sqrt(b11_prev)
-        be_prev[2, 2] = 1/np.sqrt(b11_prev)
+        be_prev = np.diag([b11_prev, 1/np.sqrt(b11_prev), 1/np.sqrt(b11_prev)])
         be_tr = Fbar@la.inv(Fbar_prev)@be_prev@la.inv(Fbar_prev).T@Fbar.T
-        lambda_a_e_tr_sq, n_a = la.eig(be_tr)
-        lambda_a_e_tr = np.sqrt(lambda_a_e_tr_sq).reshape(-1, 1)
-        eps_a_tr = np.log(lambda_a_e_tr)
+        n_a = np.eye(3)
+        eps_a_tr = 0.5 * np.log(np.diag(be_tr)).reshape(-1, 1)
 
         # Initial values of the elastic logarithmic stretches
         eps_a = eps_a_tr
@@ -612,14 +601,13 @@ def umri_su(t, strain, histvars, params):
             # Necessary values
             be = n_a@np.diag(np.exp(eps_a[:, 0])**2)@la.inv(n_a)
             I1_e = np.trace(be)
-            lambda_e_a_sq, _ = la.eig(be)
-            lambda_e_a = np.sqrt(lambda_e_a_sq).reshape(-1, 1)
+            lambda_e_a = np.sqrt(np.diag(be)).reshape(-1, 1)
 
             # Unimodular viscous kirchoff stress
             taubar_v = 2*(c1_v + I1_e*c2_v)*be - 2*c2_v*be@be
             tau_v_iso = td(PP, taubar_v, 2)
             tau_v = la.norm(tau_v_iso)/np.sqrt(2) + 1e-16
-            devtau_a = la.eig(tau_v_iso)[0].reshape(-1, 1)
+            devtau_a = np.diag(tau_v_iso).reshape(-1, 1)
 
             # Effective creep rate
             gamma_dot = sum([aj[j-1]*(tau_v*tauhinv)**j for j in range(1, len(aj)+1)])
