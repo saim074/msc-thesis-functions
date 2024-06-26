@@ -700,17 +700,12 @@ def umri_du(t, strain, histvars, stress_new, drecurr, params):
 
     # Fourth order identity tensor, I kron I, Projection Tensor
     I = np.eye(3)
-    IxI = td(I, I, 0)
-    II = I.reshape(3, 1, 3, 1)*I.reshape(1, 3, 1, 3)
-    PP = II - (1/3)*IxI
+    PP = np.einsum('ij,kl->ikjl', I, I) - (1/3) * np.einsum('ij,kl', I, I)
 
     # Current deformation gradient
-    F = np.eye(3)
     lambda1 = np.exp(strain[-1])
-    F[0, 0] = lambda1
     lambda2 = 1/np.sqrt(lambda1)
-    F[1, 1] = lambda2
-    F[2, 2] = lambda2
+    F = np.diag([lambda1, lambda2, lambda2])
     dt = t[-1]-t[-2]
 
     # Necessary values
