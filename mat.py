@@ -549,7 +549,7 @@ def umri_su(t, strain, histvars, params):
     num_aj = int((len(params) - (2 + 3 * num_branches))/num_branches)
     for branch in range(num_branches):
         aj_list.append(params[2 + 3 * num_branches + branch * num_aj: 2 + 3 * num_branches + (branch + 1) * num_aj])
-    
+
     # Initialize history variables if needed
     if len(histvars) == 0:
         b11_init = 1
@@ -783,7 +783,7 @@ def umri_du(t, strain, histvars, stress_new, drecurr, params):
         betr11 = ((lambda1*lambda2_prev)/(lambda2*lambda1_prev))**(4/3)*b11_prev
         dbe11_b11 = dexpo_b11*betr11
         dg_b11 = dbe11_b11
-    
+
         # 2.3. Construct the matrix A and A_inv
         A = np.array(
             [[1, -df_b11],
@@ -2450,7 +2450,7 @@ def ubbmi_du(t, strain, histvars, stress_new, drecurr, params):
         betr11 = ((lambda1*lambda2_prev)/(lambda2*lambda1_prev))**(4/3)*b11_prev
         dbe11_b11 = dexpo_b11*betr11
         dg_b11 = dbe11_b11
-    
+
         # 2.3. Construct the matrix A and A_inv
         A = np.array(
             [[1, -df_b11],
@@ -2596,7 +2596,7 @@ def ubbm2i_su(t, strain, histvars, params):
     num_aj = int((len(params) - (3 + 4 * num_branches))/num_branches)
     for branch in range(num_branches):
         aj_list.append(params[3 + 4 * num_branches + branch * num_aj: 3 + 4 * num_branches + (branch + 1) * num_aj])
-    
+
     # Initialize history variables if needed
     if len(histvars) == 0:
         b11_init = 1
@@ -2864,7 +2864,7 @@ def ubbm2i_du(t, strain, histvars, stress_new, drecurr, params):
         betr11 = ((lambda1*lambda2_prev)/(lambda2*lambda1_prev))**(4/3)*b11_prev
         dbe11_b11 = dexpo_b11*betr11
         dg_b11 = dbe11_b11
-    
+
         # 2.3. Construct the matrix A and A_inv
         A = np.array(
             [[1, -df_b11],

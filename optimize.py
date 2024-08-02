@@ -43,7 +43,7 @@ def evaluate(mdata, params, mat, plot=True):
 
         #Num of samples
         num_samples += len(t)
-        
+
         pred.append((t, strain, stress_hat))
 
         if plot == True:
@@ -178,8 +178,10 @@ def optimize(mdata, params_init, params_names, mat, max_iter=5000, print_after=1
                 m_hat = m[j]/(1-b1**(i+1))
                 v_hat = v[j]/(1-b2**(i+1))
                 # params_new[j] = params_curr[j] - alpha*(m_hat/(np.sqrt(v_hat)+e))
-                params_new[j] = params_curr[j] - alpha*((m_hat/(np.sqrt(v_hat)+e)) + lambda_1_j*np.sign(params_curr[j]))
-            
+                diff = (m_hat/(np.sqrt(v_hat)+e)) + \
+                    lambda_1_j*np.sign(params_curr[j])
+                params_new[j] = params_curr[j] - alpha*diff
+
             # Non negativity
             if non_neg_j:
                 if params_new[j] < 0:

@@ -3,9 +3,10 @@
 from mat import stress_update
 
 import matplotlib.pyplot as plt, numpy as np
+from scipy.signal import sawtooth
 
 def generate_mdata(t, strain, params, mat,
-                   plot=True, noise=0):
+                   plot=True, noise=0, seed=42):
 
     """
     Generate stress vector for the given loading
@@ -26,6 +27,7 @@ def generate_mdata(t, strain, params, mat,
     histvars = []
 
     # Initialize list for stress
+    np.random.seed(seed)
     stress = [0]
 
     for n in range(1, len(t)):
@@ -37,27 +39,33 @@ def generate_mdata(t, strain, params, mat,
 
     # Plot
     if plot:
+
         plt.figure(figsize = (20, 7))
 
         plt.subplot(1, 3, 1)
         plt.scatter(t, strain, s = 1)
         plt.xlabel("Time", fontsize = 15)
         plt.ylabel("Strain", fontsize = 15)
+        plt.grid()
 
         plt.subplot(1, 3, 2)
         plt.scatter(t, stress, s=1)
         plt.xlabel("Time", fontsize = 15)
         plt.ylabel("Stress", fontsize = 15)
+        plt.grid()
 
         plt.subplot(1, 3, 3)
         plt.scatter(strain, stress, s=1)
         plt.xlabel("Strain", fontsize = 15)
         plt.ylabel("Stress", fontsize = 15)
+        plt.axvline(x=0, color='black')
+        plt.axhline(y=0, color='black')
+        plt.grid()
 
     return (t, strain, stress)
 
 def sawtooth_loading(max_val, min_val, start, rate,
-                     cycles = 1, dt = 1, 
+                     cycles = 1, dt = 1,
                      plot=True):
     """
     Generates time and y values for a sawtooth loading
@@ -98,9 +106,9 @@ def sawtooth_loading(max_val, min_val, start, rate,
     y = np.array([])
     t_cycle = t3[-1]
     for c in range(cycles):
-        t = np.concatenate([t, 
-                            t1 + t_cycle*c, 
-                            t2 + t_cycle*c, 
+        t = np.concatenate([t,
+                            t1 + t_cycle*c,
+                            t2 + t_cycle*c,
                             t3 + t_cycle*c])
         y = np.concatenate([y, y1, y2, y3])
 
@@ -110,6 +118,7 @@ def sawtooth_loading(max_val, min_val, start, rate,
         plt.plot(t, y)
 
     return t, y
+
 
 def cyclic_loading(max_val, min_val, start, freq,
                    cycles = 1, dt = 1,
@@ -121,7 +130,7 @@ def cyclic_loading(max_val, min_val, start, freq,
         min_val: minimum value
         start  : start value (0 for strain, 1 for stretch)
         freq   : frequency of the cycles
-        cycles : list of material parameters
+        cycles : number of cycles
         dt     : delta time
         plot   : if True, plot time vs y
     Output
@@ -129,7 +138,7 @@ def cyclic_loading(max_val, min_val, start, freq,
         y: cyclic load values, either stretch or strain
     """
 
-    # Time and stretch array
+    # Time and y array
     mid = (max_val+min_val)/2
     amp = (max_val-min_val)/2
     offset = np.arcsin((start-mid)/amp)/2/np.pi/freq
